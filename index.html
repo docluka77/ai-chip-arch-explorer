@@ -1,0 +1,3237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 芯片架构与 MAESTRO 空间探索器 | Eyeriss · ShiDianNao · NVDLA</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    @keyframes pulseFlow {
+      0%, 100% { opacity: 0.35; transform: scale(0.98); }
+      50% { opacity: 1; transform: scale(1.03); }
+    }
+    @keyframes dashMove {
+      to { stroke-dashoffset: -24; }
+    }
+    .flow-line-active {
+      stroke-dasharray: 6 6;
+      animation: dashMove 0.9s linear infinite;
+    }
+    .arch-node {
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+    }
+    .arch-node:hover {
+      filter: brightness(1.15);
+    }
+    .pe-cell {
+      transition: all 0.25s ease;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="bg-white text-slate-800 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-slate-900 overflow-x-hidden">
+
+  <!-- Top Navigation Header -->
+  <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20 font-bold text-slate-950 text-lg mono">
+          AI
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-bold tracking-tight text-slate-900">DNN Accelerator Architecture Explorer</h1>
+            <span class="hidden sm:inline-block text-xs px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-700 border border-indigo-500/30 font-medium">Interactive Hardware Visualizer</span>
+          </div>
+          <p class="text-xs text-slate-500">Eyeriss (MIT) · ShiDianNao (ICT CAS) · NVDLA (NVIDIA) 微架构、存储层次与数据流交互式解析</p>
+        </div>
+      </div>
+
+      <!-- Main View Switcher & GitHub Modal Button -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <div class="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200" role="tablist">
+          <button id="nav-tab-explorer" type="button" data-mainview="explorer" class="main-view-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all bg-indigo-600 text-white shadow">
+            架构拓扑与数据流仿真
+          </button>
+          <button id="nav-tab-compare" type="button" data-mainview="compare" class="main-view-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-500 hover:text-slate-900">
+            横向对比与算力映射器
+          </button>
+          <button id="nav-tab-transformer" type="button" data-mainview="transformer" class="main-view-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+            <span>Transformer 适配分析</span>
+          </button>
+          <button id="nav-tab-maestro" type="button" data-mainview="maestro" class="main-view-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-violet-600"></span>
+            <span>MAESTRO 空间探索 (DSE)</span>
+          </button>
+        </div>
+        <button id="btn-open-github-modal" type="button" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-xs sm:text-sm font-medium text-slate-800 flex items-center gap-1.5 transition-colors">
+          <svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          <span>GitHub 部署指南</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+    <!-- ==================== VIEW 1: ARCHITECTURE EXPLORER & SIMULATOR ==================== -->
+    <section id="view-explorer" class="space-y-6">
+
+      <!-- Accelerator Selector Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Eyeriss Card -->
+        <button type="button" data-arch="eyeriss" class="arch-select-card text-left p-4 rounded-2xl border-2 transition-all bg-white shadow-sm border-indigo-500 shadow-lg shadow-indigo-500/10">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-700 border border-indigo-500/30">MIT · ISCA 2016 / JSSC 2017</span>
+            <span class="text-xs mono text-slate-500">65nm · 168 PEs</span>
+          </div>
+          <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-indigo-400"></span>
+            Eyeriss
+          </h2>
+          <p class="text-xs text-slate-700 mt-1 line-clamp-2">首创 <strong>Row-Stationary (RS 行驻留)</strong> 数据流，通过 4 级存储层次与 GIN/LN 双层片上网络最大化卷积局部数据复用。</p>
+          <div class="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 mono">
+            <span>12×14 空间阵列</span>
+            <span>GLB 108KB + RLC压缩</span>
+          </div>
+        </button>
+
+        <!-- ShiDianNao Card -->
+        <button type="button" data-arch="shidiannao" class="arch-select-card text-left p-4 rounded-2xl border-2 transition-all bg-slate-50/80 border-slate-200 hover:border-slate-300">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-700 border border-emerald-500/30">ICT CAS · ISCA 2015</span>
+            <span class="text-xs mono text-slate-500">65nm · 64 PEs</span>
+          </div>
+          <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            ShiDianNao (石电脑)
+          </h2>
+          <p class="text-xs text-slate-700 mt-1 line-clamp-2">紧耦合图像传感器的 <strong>Output-Stationary (OS 输出驻留)</strong> 2D 网格架构，全片上 SRAM (NBin/NBout/SB) 消除 DRAM 访存。</p>
+          <div class="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 mono">
+            <span>8×8 2D Mesh NFU</span>
+            <span>256KB 全片上缓冲</span>
+          </div>
+        </button>
+
+        <!-- NVDLA Card -->
+        <button type="button" data-arch="nvdla" class="arch-select-card text-left p-4 rounded-2xl border-2 transition-all bg-slate-50/80 border-slate-200 hover:border-slate-300">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-amber-500/20 text-amber-700 border border-amber-500/30">NVIDIA · Open Source</span>
+            <span class="text-xs mono text-slate-500">64–2048 MACs</span>
+          </div>
+          <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+            NVDLA
+          </h2>
+          <p class="text-xs text-slate-700 mt-1 line-clamp-2">工业级模块化固定功能流水线架构，涵盖 <strong>CONV · SDP · PDP · CDP · RUBIK · BDMA</strong>，支持独立模式与融合流水线模式。</p>
+          <div class="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 mono">
+            <span>Atomic-C × Atomic-K</span>
+            <span>Direct / Winograd / 稀疏</span>
+          </div>
+        </button>
+      </div>
+
+      <!-- Architecture Top Workspace: Left Interactive Block Diagram + Right Component Deep-Dive -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left 7 Cols: Interactive Hardware Block Diagram SVG -->
+        <div class="lg:col-span-7 bg-white shadow-sm border border-slate-200 rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-4 border-b border-slate-200">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span id="diagram-badge" class="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-700">Eyeriss Spatial Architecture</span>
+                  <h3 id="diagram-title" class="text-base font-bold text-slate-900">芯片顶层结构与片上互连框图</h3>
+                </div>
+                <p class="text-xs text-slate-500 mt-0.5">点击任意硬件模块查看内部微架构、寄存器与位宽配置（高亮虚线代表当前激活的数据流通道）</p>
+              </div>
+
+              <!-- Architecture-Specific Mode Toggle (e.g. NVDLA Fused vs Independent, Eyeriss GLC/PE, etc.) -->
+              <div id="arch-submode-bar" class="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200">
+                <!-- Populated dynamically by JS -->
+              </div>
+            </div>
+
+            <!-- Interactive SVG Container -->
+            <div id="arch-svg-container" class="w-full bg-white/95 rounded-xl border border-slate-200 p-2 sm:p-4 flex items-center justify-center min-h-[340px]">
+              <!-- Rendered dynamically by JS -->
+            </div>
+          </div>
+
+          <!-- Legend & Quick Component Pills -->
+          <div class="mt-4 pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2 flex-wrap" id="component-quick-pills">
+              <!-- Quick component selector buttons rendered by JS -->
+            </div>
+            <a id="arch-paper-link" href="https://courses.cs.washington.edu/courses/cse550/21au/papers/CSE550.Eyeriss.pdf" target="_blank" rel="noopener noreferrer" class="text-xs text-indigo-600 hover:text-indigo-700 underline flex items-center gap-1 font-medium">
+              <span>查阅原始论文 / 硬件规范</span>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            </a>
+          </div>
+        </div>
+
+        <!-- Right 5 Cols: Selected Hardware Module Deep-Dive Inspector -->
+        <div class="lg:col-span-5 bg-white shadow-sm border border-slate-200 rounded-2xl p-4 sm:p-5 flex flex-col justify-between space-y-4">
+          <div>
+            <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div>
+                <span class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Module Microarchitecture Inspector</span>
+                <h3 id="inspector-title" class="text-lg font-bold text-slate-900 mt-0.5">PE (Processing Element) 内部微架构</h3>
+              </div>
+              <span id="inspector-tag" class="text-xs mono px-2.5 py-1 rounded-lg bg-indigo-500/20 text-indigo-700 border border-indigo-500/30 font-semibold">Core Compute</span>
+            </div>
+
+            <p id="inspector-desc" class="text-xs sm:text-sm text-slate-700 leading-relaxed mt-3">
+              每个 Eyeriss PE 包含三级独立分离的本地暂存器 (Scratchpad, Spad) 与 16-bit 两级流水线乘加器 (MAC)，通过寄存器级局部复用将高能耗的全局访问降至最低。
+            </p>
+
+            <!-- Hardware Specs Key-Value Grid -->
+            <div id="inspector-specs" class="grid grid-cols-2 gap-2.5 mt-4">
+              <!-- Populated by JS -->
+            </div>
+
+            <!-- Internal Sub-Diagram / Micro-structure Box -->
+            <div class="mt-4 bg-slate-50 rounded-xl border border-slate-200 p-3.5">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-slate-700">内部流水线与硬件机制解析</span>
+                <span id="inspector-formula" class="text-xs mono text-sky-600">16-bit Fixed-Point</span>
+              </div>
+              <ul id="inspector-bullets" class="space-y-2 text-xs text-slate-700">
+                <!-- Populated by JS -->
+              </ul>
+            </div>
+          </div>
+
+          <!-- Architectural Highlight Callout -->
+          <div class="bg-gradient-to-r from-indigo-50 to-slate-50 border border-indigo-500/30 rounded-xl p-3.5">
+            <div class="text-xs font-semibold text-indigo-700 mb-1 flex items-center gap-1.5">
+              <svg class="w-4 h-4 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              <span id="inspector-insight-title">设计精髓与能效收益</span>
+            </div>
+            <p id="inspector-insight-text" class="text-xs text-slate-700 leading-relaxed">
+              在 Eyeriss 的 4 级存储层次中，从 PE 内部 Spad 读数据的能耗仅为全局缓冲区 (GLB) 的 1/6、片外 DRAM 的 1/200。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Interactive Cycle-by-Cycle Dataflow & PE Array Simulator -->
+      <div class="bg-white shadow-sm border border-slate-200 rounded-2xl p-4 sm:p-6">
+        <div class="flex flex-wrap items-center justify-between gap-4 pb-4 mb-5 border-b border-slate-200">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <h3 id="sim-title" class="text-base sm:text-lg font-bold text-slate-900">Eyeriss Row-Stationary (行驻留) 周期级数据流交互仿真</h3>
+            </div>
+            <p id="sim-subtitle" class="text-xs text-slate-500 mt-0.5">观察卷积核权重 (Filter)、输入特征图 (Ifmap) 与部分和 (Psum) 在二维阵列中的空间广播、错位复用与垂直累加过程</p>
+          </div>
+
+          <!-- Playback Controls -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <button id="btn-sim-prev" type="button" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-medium text-slate-800 border border-slate-300 transition-colors">
+              ◀ 上一拍
+            </button>
+            <button id="btn-sim-play" type="button" class="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white shadow transition-colors flex items-center gap-1.5">
+              <span id="sim-play-icon">▶</span>
+              <span id="sim-play-label">自动播放</span>
+            </button>
+            <button id="btn-sim-next" type="button" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-medium text-slate-800 border border-slate-300 transition-colors">
+              下一拍 ▶
+            </button>
+            <button id="btn-sim-reset" type="button" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-medium text-slate-700 border border-slate-300 transition-colors">
+              重置 (T=0)
+            </button>
+            <div class="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs mono text-sky-600 font-semibold">
+              Cycle <span id="sim-cycle-num">0</span> / 5
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+          <!-- Left 7 Cols: Visual 2D Grid / Pipeline Array -->
+          <div class="lg:col-span-7 bg-slate-50 rounded-xl border border-slate-200 p-4">
+            <div class="flex items-center justify-between mb-3 text-xs">
+              <span id="sim-grid-caption" class="font-semibold text-slate-700">3×3 卷积映射到 3×3 逻辑 PE 子阵列 (Row-Stationary)</span>
+              <div id="sim-legend" class="flex items-center gap-3 flex-wrap">
+                <span class="flex items-center gap-1 text-indigo-700"><span class="w-2.5 h-2.5 rounded-sm bg-indigo-500 inline-block"></span>权重水平共享</span>
+                <span class="flex items-center gap-1 text-emerald-700"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block"></span>输入对角复用</span>
+                <span class="flex items-center gap-1 text-amber-700"><span class="w-2.5 h-2.5 rounded-sm bg-amber-500 inline-block"></span>部分和垂直累加</span>
+              </div>
+            </div>
+
+            <!-- Dynamic PE Array / Pipeline Visualization Grid -->
+            <div id="sim-array-grid" class="grid grid-cols-3 gap-3 my-2">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- Right 5 Cols: Cycle Commentary & Data Reuse Telemetry -->
+          <div class="lg:col-span-5 space-y-4">
+            <div class="bg-slate-50 rounded-xl border border-slate-200 p-4">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold uppercase tracking-wider text-indigo-600">当前时钟周期动作解析</span>
+                <span id="sim-step-badge" class="text-xs mono px-2 py-0.5 rounded bg-slate-100 text-slate-700">Step 1 of 6</span>
+              </div>
+              <h4 id="sim-step-title" class="text-sm sm:text-base font-bold text-slate-900 mb-1.5">卷积核行预加载与水平广播 (Filter Row Multicast)</h4>
+              <p id="sim-step-desc" class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+                GLB 通过 GIN Y-Bus 与 X-Bus 将 3×3 卷积核的 3 行权重分别水平多播到第 1、2、3 行 PE 的 Filter Spad (224×16b SRAM) 中驻留。同一行的所有 PE 共享相同的卷积核行。
+              </p>
+            </div>
+
+            <!-- Real-time Dataflow Reuse Bars -->
+            <div class="bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-3">
+              <div class="text-xs font-semibold text-slate-700">三种数据流驻留特性与片上带宽分布</div>
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-500" id="metric-label-1">Filter 权重局部复用率 (Spad 驻留)</span>
+                  <span class="mono text-indigo-600 font-semibold" id="metric-val-1">92%</span>
+                </div>
+                <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div id="metric-bar-1" class="h-full bg-indigo-500 rounded-full transition-all duration-300" style="width: 92%"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-500" id="metric-label-2">Ifmap 特征图空域共享效率 (对角/网格广播)</span>
+                  <span class="mono text-emerald-600 font-semibold" id="metric-val-2">88%</span>
+                </div>
+                <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div id="metric-bar-2" class="h-full bg-emerald-500 rounded-full transition-all duration-300" style="width: 88%"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-500" id="metric-label-3">Psum 部分和片上规约效率 (LN 垂直累加)</span>
+                  <span class="mono text-amber-600 font-semibold" id="metric-val-3">95%</span>
+                </div>
+                <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div id="metric-bar-3" class="h-full bg-amber-500 rounded-full transition-all duration-300" style="width: 95%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ==================== VIEW 2: COMPARISON & WORKLOAD MAPPER ==================== -->
+    <section id="view-compare" class="hidden space-y-6">
+
+      <!-- Quantitative Charts Row -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Radar Chart: 5-Axis Architectural Capability -->
+        <div class="lg:col-span-5 bg-white shadow-sm border border-slate-200 rounded-2xl p-4 sm:p-5">
+          <div class="mb-3">
+            <h3 class="text-base font-bold text-slate-900">三款加速器五维架构特性雷达图</h3>
+            <p class="text-xs text-slate-500">基于 ISCA'15 / ISCA'16 / NVDLA 硬件规范的架构设计取向对比</p>
+          </div>
+          <div class="relative h-72 w-full">
+            <canvas id="radarChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Interactive Workload & Hardware Utilization Calculator -->
+        <div class="lg:col-span-7 bg-white shadow-sm border border-slate-200 rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-4 border-b border-slate-200">
+              <div>
+                <h3 class="text-base font-bold text-slate-900">CNN 算子映射与硬件利用率仿真器 (Workload Mapper)</h3>
+                <p class="text-xs text-slate-500">选择典型网络层或调节通道维度，实时计算三款架构的硬件映射效率与访存特征</p>
+              </div>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <button type="button" data-preset="alexnet_conv1" class="workload-preset-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-600 text-white">AlexNet Conv1 (C=3, K=96)</button>
+                <button type="button" data-preset="vgg16_conv3" class="workload-preset-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200">VGG-16 Conv3 (C=256, K=256)</button>
+                <button type="button" data-preset="mobilenet_pw" class="workload-preset-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200">1×1 Pointwise (C=64, K=128)</button>
+              </div>
+            </div>
+
+            <!-- Sliders for Layer Shape -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <label for="input-cin" class="text-slate-500">输入通道数 (C)</label>
+                  <span id="val-cin" class="mono font-bold text-indigo-600">3</span>
+                </div>
+                <input id="input-cin" type="range" min="1" max="256" value="3" class="w-full accent-indigo-500 cursor-pointer" />
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <label for="input-kout" class="text-slate-500">输出卷积核数 (K)</label>
+                  <span id="val-kout" class="mono font-bold text-emerald-600">96</span>
+                </div>
+                <input id="input-kout" type="range" min="8" max="512" step="8" value="96" class="w-full accent-emerald-500 cursor-pointer" />
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <label for="input-kernel" class="text-slate-500">卷积核尺寸 (R×S)</label>
+                  <span id="val-kernel" class="mono font-bold text-amber-600">11×11</span>
+                </div>
+                <input id="input-kernel" type="range" min="1" max="11" step="2" value="11" class="w-full accent-amber-500 cursor-pointer" />
+              </div>
+            </div>
+
+            <!-- Resulting Mapping Cards for the 3 Architectures -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="bg-slate-50 border border-indigo-500/30 rounded-xl p-3">
+                <div class="text-xs font-semibold text-indigo-700 mb-1">Eyeriss (12×14 = 168 PEs)</div>
+                <div class="text-xl font-bold mono text-slate-900" id="calc-eyeriss-util">91.7%</div>
+                <div class="text-xs text-slate-500 mt-0.5">PE 阵列空间映射利用率</div>
+                <p id="calc-eyeriss-note" class="text-xs text-slate-700 mt-2 pt-2 border-t border-slate-200">
+                  11×11 卷积核行折叠映射至 12 行 PE，通过 RLC 游程编码压缩片外零值激活。
+                </p>
+              </div>
+
+              <div class="bg-slate-50 border border-emerald-500/30 rounded-xl p-3">
+                <div class="text-xs font-semibold text-emerald-700 mb-1">ShiDianNao (8×8 = 64 PEs)</div>
+                <div class="text-xl font-bold mono text-slate-900" id="calc-shidiannao-util">100.0%</div>
+                <div class="text-xs text-slate-500 mt-0.5">8×8 输出特征图块驻留效率</div>
+                <p id="calc-shidiannao-note" class="text-xs text-slate-700 mt-2 pt-2 border-t border-slate-200">
+                  每个 PE 负责 1 个输出像素驻留累加，权重由 SB (128KB) 单周期广播至全部 64 个 PE。
+                </p>
+              </div>
+
+              <div class="bg-slate-50 border border-amber-500/30 rounded-xl p-3">
+                <div class="text-xs font-semibold text-amber-700 mb-1">NVDLA Large (64×16 MACs)</div>
+                <div class="text-xl font-bold mono text-slate-900" id="calc-nvdla-util">48.5%</div>
+                <div class="text-xs text-slate-500 mt-0.5">Atomic-C=64 × Atomic-K=16 利用率</div>
+                <p id="calc-nvdla-note" class="text-xs text-slate-700 mt-2 pt-2 border-t border-slate-200">
+                  首层 C=3 小于 Atomic-C (64)，NVDLA 启用 Image-Input 通道扩展模式将 MAC 利用率提升至近 50%。
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comprehensive Side-by-Side Architecture Specification Table -->
+      <div class="bg-white shadow-sm border border-slate-200 rounded-2xl p-4 sm:p-6 overflow-x-auto">
+        <div class="mb-4">
+          <h3 class="text-base sm:text-lg font-bold text-slate-900">Eyeriss vs. ShiDianNao vs. NVDLA 核心架构参数全维对比表</h3>
+          <p class="text-xs text-slate-500 mt-0.5">涵盖数据流范式、计算单元拓扑、片上存储层次、片上互连 (NoC) 与硬件优化机制</p>
+        </div>
+
+        <table class="w-full text-left border-collapse text-xs sm:text-sm">
+          <thead>
+            <tr class="border-b border-slate-200 text-slate-700 bg-slate-100">
+              <th class="py-3 px-4 font-semibold">架构维度</th>
+              <th class="py-3 px-4 font-bold text-indigo-700">Eyeriss (MIT, ISCA 2016)</th>
+              <th class="py-3 px-4 font-bold text-emerald-700">ShiDianNao (中科院计算所, ISCA 2015)</th>
+              <th class="py-3 px-4 font-bold text-amber-700">NVDLA (NVIDIA, 开源工业级架构)</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 text-slate-700">
+            <tr class="hover:bg-slate-100/70">
+              <td class="py-3 px-4 font-semibold text-slate-900">核心数据流范式</td>
+              <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-700 font-medium">Row-Stationary (RS 行驻留)</span><br/><span class="text-xs text-slate-500">1D 卷积行驻留 PE，兼顾权重、激活与部分和三者局部复用</span></td>
+              <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-700 font-medium">Output-Stationary (OS 输出驻留)</span><br/><span class="text-xs text-slate-500">每个 PE 驻留累加一个输出神经元，输入像素沿 2D 网格移位共享</span></td>
+              <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-700 font-medium">Atomic-C × Atomic-K 通道并行流水</span><br/><span class="text-xs text-slate-500">沿输入通道 C 与输出卷积核 K 并行乘加，支持融合流水线</span></td>
+            </tr>
+            <tr class="hover:bg-slate-100/70">
+              <td class="py-3 px-4 font-semibold text-slate-900">计算阵列规模与精度</td>
+              <td class="py-3 px-4 mono">12 × 14 = 168 PEs<br/><span class="text-xs text-slate-500 font-sans">16-bit 定点两级流水线 MAC</span></td>
+              <td class="py-3 px-4 mono">8 × 8 = 64 PEs (2D NFU) + 1D ALU<br/><span class="text-xs text-slate-500 font-sans">16-bit 定点乘加/比较器 + 非线性激活 ALU</span></td>
+              <td class="py-3 px-4 mono">nv_small: 8×8 (64 INT8 MACs)<br/>nv_large: 64×16 (1024 FP16/INT16 MACs)</td>
+            </tr>
+            <tr class="hover:bg-slate-100/70">
+              <td class="py-3 px-4 font-semibold text-slate-900">片上存储层次结构</td>
+              <td class="py-3 px-4">
+                <strong>4 级存储层次：</strong><br/>
+                1. 片外 DRAM<br/>
+                2. 108 KB 全局缓冲 (GLB SRAM)<br/>
+                3. 阵列间局部网络 (LN)<br/>
+                4. PE 私有 Spad (Filter 448B, Ifmap 24B, Psum 48B)
+              </td>
+              <td class="py-3 px-4">
+                <strong>全片上三缓冲架构 (256 KB)：</strong><br/>
+                1. <strong>NBin</strong> (64 KB 输入神经元缓冲)<br/>
+                2. <strong>NBout</strong> (64 KB 输出神经元缓冲)<br/>
+                3. <strong>SB</strong> (128 KB 突触权重缓冲)<br/>
+                <span class="text-xs text-emerald-600">无需片外 DRAM 访存</span>
+              </td>
+              <td class="py-3 px-4">
+                <strong>统一卷积缓冲 + 双存储接口：</strong><br/>
+                1. <strong>CBUF</strong> (2–32 Banks × 4–32KB, 如 512KB)<br/>
+                2. <strong>DBBIF</strong> (主系统 DRAM AXI4 接口)<br/>
+                3. <strong>SRAMIF</strong> (可选高带宽低延迟片上 SRAM 接口)
+              </td>
+            </tr>
+            <tr class="hover:bg-slate-100/70">
+              <td class="py-3 px-4 font-semibold text-slate-900">片上互连网络 (NoC)</td>
+              <td class="py-3 px-4"><strong>GIN (全局输入网) + LN (局部网)</strong><br/><span class="text-xs text-slate-500">X-Bus / Y-Bus 基于 Tag 匹配实现单周期水平/对角多播；LN 实现邻居 PE 垂直部分和传递</span></td>
+              <td class="py-3 px-4"><strong>2D 网格近邻移位互连 + 全局广播</strong><br/><span class="text-xs text-slate-500">每个 PE 支持从右侧邻居 (Right→Left) 与下方邻居 (Down→Up) 读取像素以复用滑动窗口</span></td>
+              <td class="py-3 px-4"><strong>独立 DMA 通道 + 跨引擎 FIFO 直连</strong><br/><span class="text-xs text-slate-500">Independent 模式走存储器；Fused 模式通过内部小 FIFO 串联 CONV→SDP→PDP→CDP</span></td>
+            </tr>
+            <tr class="hover:bg-slate-100/70">
+              <td class="py-3 px-4 font-semibold text-slate-900">后处理与特殊算子支持</td>
+              <td class="py-3 px-4">主要聚焦卷积层与全连接层加速；片上集成 ReLU 与游程编码压缩/解压硬件</td>
+              <td class="py-3 px-4">PE 内置加法器/比较器原生支持 Average/Max Pooling；尾部 1D ALU 负责激活函数</td>
+              <td class="py-3 px-4">专用硬件引擎全覆盖：<strong>SDP</strong> (BN/ReLU/LUT激活)、<strong>PDP</strong> (Max/Min/Avg池化)、<strong>CDP</strong> (LRN归一化)、<strong>RUBIK</strong> (反卷积/切片重排)</td>
+            </tr>
+            <tr class="hover:bg-slate-100/70">
+              <td class="py-3 px-4 font-semibold text-slate-900">稀疏与算法级硬件优化</td>
+              <td class="py-3 px-4"><strong>RLC 游程长度压缩</strong> (节省片外带宽) + <strong>Zero Data Gating</strong> (零激活门控省电)</td>
+              <td class="py-3 px-4"><strong>近传感处理 (Near-Sensor)</strong> 直接从图像传感器读取像素 + 16-bit 定点轻量化算子</td>
+              <td class="py-3 px-4"><strong>Winograd 卷积</strong> (3×3 减少 2.25× 乘法) + <strong>稀疏权重压缩</strong> + <strong>Image-Input 模式</strong> + <strong>Batching</strong></td>
+            </tr>
+            <tr class="hover:bg-slate-100/70">
+              <td class="py-3 px-4 font-semibold text-slate-900">实测能效与权威出处</td>
+              <td class="py-3 px-4">
+                AlexNet: 35 fps @ 278 mW<br/>
+                VGG-16: 0.7 fps @ 236 mW<br/>
+                <a href="https://courses.cs.washington.edu/courses/cse550/21au/papers/CSE550.Eyeriss.pdf" target="_blank" rel="noopener noreferrer" class="text-indigo-600 underline text-xs">MIT Eyeriss JSSC/ISCA 论文</a>
+              </td>
+              <td class="py-3 px-4">
+                65nm 面积仅 0.57 mm², 功耗 320 mW<br/>
+                能效比 DianNao 提升约 60 倍<br/>
+                <a href="https://dl.acm.org/doi/pdf/10.1145/2749469.2750389" target="_blank" rel="noopener noreferrer" class="text-emerald-600 underline text-xs">ShiDianNao ISCA 2015 论文</a>
+              </td>
+              <td class="py-3 px-4">
+                可缩放 RTL 生成器，广泛应用于自动驾驶与边缘 SoC<br/>
+                <a href="https://nvdla.org/hw/v1/hwarch.html" target="_blank" rel="noopener noreferrer" class="text-amber-600 underline text-xs">NVDLA 官方硬件架构规范</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </section>
+
+    <!-- ==================== VIEW 3: TRANSFORMER ANALYSIS & OPERATOR MAPPING ==================== -->
+    <section id="view-transformer" class="hidden space-y-6">
+
+      <!-- Top Banner: Core Paradigm Shift from CNN to Transformer -->
+      <div class="bg-gradient-to-r from-indigo-50 via-white to-rose-50 border border-indigo-500/30 rounded-2xl p-4 sm:p-6">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div class="max-w-3xl">
+            <div class="flex items-center gap-2 mb-1.5">
+              <span class="text-xs font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-rose-500/20 text-rose-700 border border-rose-500/30">CNN vs. Transformer Hardware Gap</span>
+              <span class="text-xs text-slate-500 mono">Spatial Locality → Dynamic Global Attention</span>
+            </div>
+            <h2 class="text-lg sm:text-xl font-bold text-slate-900">当经典 CNN 加速器遇上 Transformer：数据流冲突与算子映射全解</h2>
+            <p class="text-xs sm:text-sm text-slate-700 mt-1 leading-relaxed">
+              Eyeriss、ShiDianNao 与 NVDLA 均诞生于以<strong>局部二维滑动窗口 (2D Sliding Window)</strong> 与<strong>静态卷积核权重 (Static Weights)</strong> 为核心的 CNN 时代。而 Transformer 引入了<strong>无空间滑动复用的 $1\times1$ 线性投影</strong>、<strong>双动态操作数矩阵乘 ($Q\times K^T, P\times V$)</strong>、<strong>随序列膨胀的 KV Cache</strong> 以及<strong>全局归约非线性算子 (Softmax / LayerNorm / GELU)</strong>。下方交互沙盘逐层拆解三款架构运行 Transformer 时的真实硬件表现。
+            </p>
+          </div>
+
+          <div class="flex flex-col gap-2 bg-white/95 p-3.5 rounded-xl border border-slate-200 min-w-[230px]">
+            <div class="text-xs font-semibold text-slate-700">Transformer 综合硬件适配度排行</div>
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-amber-700 font-medium">1. NVDLA (1×1 Conv + SDP LUT)</span>
+              <span class="mono font-bold text-amber-600">74 / 100</span>
+            </div>
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-indigo-700 font-medium">2. Eyeriss (受限于 R=S=1 退化)</span>
+              <span class="mono font-bold text-indigo-600">52 / 100</span>
+            </div>
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-emerald-700 font-medium">3. ShiDianNao (128KB SB 溢出)</span>
+              <span class="mono font-bold text-emerald-600">28 / 100</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Transformer Block Pipeline Stage Selector -->
+      <div class="bg-white shadow-sm border border-slate-200 rounded-2xl p-4 sm:p-6 space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900">1. Transformer 算子级硬件映射交互沙盘 (Operator-to-Hardware Mapper)</h3>
+            <p class="text-xs text-slate-500 mt-0.5">点击下方 Transformer 编码/解码层中的任意算子模块，对比三款硬件的数据流映射路径、调用子单元与核心瓶颈</p>
+          </div>
+          <span id="tf-op-formula-badge" class="text-xs mono px-3 py-1 rounded-lg bg-indigo-500/20 text-indigo-700 border border-indigo-500/30 font-semibold">
+            Y = X · W_QKV (等价于 R=1, S=1 点卷积)
+          </span>
+        </div>
+
+        <!-- 6 Clickable Pipeline Stages -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          <button type="button" data-tfop="qkv_proj" class="tf-op-btn text-left p-3 rounded-xl border-2 transition-all bg-indigo-50/90 border-indigo-500 shadow">
+            <div class="text-[10px] mono text-indigo-700 font-semibold">Stage 1 · Linear</div>
+            <div class="text-xs sm:text-sm font-bold text-slate-900 mt-0.5">Q / K / V 线性投影</div>
+            <div class="text-[11px] text-slate-500 mt-1">静态权重 GEMM</div>
+          </button>
+
+          <button type="button" data-tfop="qk_matmul" class="tf-op-btn text-left p-3 rounded-xl border-2 transition-all bg-slate-50 border-slate-200 hover:border-slate-300">
+            <div class="text-[10px] mono text-rose-700 font-semibold">Stage 2 · Attention</div>
+            <div class="text-xs sm:text-sm font-bold text-slate-900 mt-0.5">Q × Kᵀ 动态矩阵乘</div>
+            <div class="text-[11px] text-slate-500 mt-1">双动态激活张量乘</div>
+          </button>
+
+          <button type="button" data-tfop="softmax" class="tf-op-btn text-left p-3 rounded-xl border-2 transition-all bg-slate-50 border-slate-200 hover:border-slate-300">
+            <div class="text-[10px] mono text-amber-700 font-semibold">Stage 3 · Non-Linear</div>
+            <div class="text-xs sm:text-sm font-bold text-slate-900 mt-0.5">Row-Wise Softmax</div>
+            <div class="text-[11px] text-slate-500 mt-1">全局行最大值+指数归约</div>
+          </button>
+
+          <button type="button" data-tfop="pv_matmul" class="tf-op-btn text-left p-3 rounded-xl border-2 transition-all bg-slate-50 border-slate-200 hover:border-slate-300">
+            <div class="text-[10px] mono text-emerald-700 font-semibold">Stage 4 · Context</div>
+            <div class="text-xs sm:text-sm font-bold text-slate-900 mt-0.5">P × V 聚合与 KV Cache</div>
+            <div class="text-[11px] text-slate-500 mt-1">动态 V 矩阵读取</div>
+          </button>
+
+          <button type="button" data-tfop="layernorm" class="tf-op-btn text-left p-3 rounded-xl border-2 transition-all bg-slate-50 border-slate-200 hover:border-slate-300">
+            <div class="text-[10px] mono text-sky-700 font-semibold">Stage 5 · Norm & Add</div>
+            <div class="text-xs sm:text-sm font-bold text-slate-900 mt-0.5">残差相加 + LayerNorm</div>
+            <div class="text-[11px] text-slate-500 mt-1">通道均值/方差/倒数平方根</div>
+          </button>
+
+          <button type="button" data-tfop="ffn_gelu" class="tf-op-btn text-left p-3 rounded-xl border-2 transition-all bg-slate-50 border-slate-200 hover:border-slate-300">
+            <div class="text-[10px] mono text-purple-700 font-semibold">Stage 6 · MLP / FFN</div>
+            <div class="text-xs sm:text-sm font-bold text-slate-900 mt-0.5">FFN 升维/降维 + GELU</div>
+            <div class="text-[11px] text-slate-500 mt-1">大矩阵乘 + 超越激活函数</div>
+          </button>
+        </div>
+
+        <!-- Selected Operator Overview Box -->
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+            <h4 id="tf-op-title" class="text-sm sm:text-base font-bold text-slate-900">Stage 1: Q / K / V 线性投影 (Static Weight Matrix Multiplication)</h4>
+            <span id="tf-op-nature" class="text-xs px-2.5 py-0.5 rounded bg-indigo-500/20 text-indigo-700 font-medium">计算密集型 (Prefill) / 访存密集型 (Decode)</span>
+          </div>
+          <p id="tf-op-desc" class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+            将输入 Token 序列张量 X [L, D] 与训练好固定的权重矩阵 W_Q, W_K, W_V [D, D] 相乘。在硬件层面，这完全等价于卷积核尺寸 R=1, S=1、输入通道 C=D、输出卷积核数 K=D、空间像素数为 L 的 1×1 逐点卷积 (Pointwise Convolution)。
+          </p>
+        </div>
+
+        <!-- 3 Architecture Mapping Result Cards for Selected Operator -->
+        <div id="tf-arch-cards" class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <!-- Populated dynamically by JS -->
+        </div>
+      </div>
+
+      <!-- Interactive Prefill vs Decode Simulator & Chart -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left 7 Cols: Interactive Prefill vs Decode & Sequence Length Simulator -->
+        <div class="lg:col-span-7 bg-white shadow-sm border border-slate-200 rounded-2xl p-4 sm:p-5 flex flex-col justify-between space-y-4">
+          <div>
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-4 border-b border-slate-200">
+              <div>
+                <h3 class="text-base font-bold text-slate-900">2. Transformer Prefill vs. Decode 阶段硬件压力仿真器</h3>
+                <p class="text-xs text-slate-500">调节序列长度 (L) 与隐藏层维度 (D)，观察片上 SRAM 容量墙与算力利用率退化</p>
+              </div>
+              <div class="inline-flex rounded-xl bg-slate-50 p-1 border border-slate-200">
+                <button id="btn-tf-prefill" type="button" data-tfphase="prefill" class="tf-phase-btn px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-600 text-white">
+                  Prefill 预填充阶段 (并行 L Tokens)
+                </button>
+                <button id="btn-tf-decode" type="button" data-tfphase="decode" class="tf-phase-btn px-3 py-1 rounded-lg text-xs font-semibold text-slate-500 hover:text-slate-900">
+                  Decode 解码阶段 (逐 Token + KV Cache)
+                </button>
+              </div>
+            </div>
+
+            <!-- Sliders for Sequence Length L and Hidden Size D -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200 mb-4">
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <label for="input-tf-seq" class="text-slate-500">输入序列长度 / 上下文窗口 (L)</label>
+                  <span id="val-tf-seq" class="mono font-bold text-indigo-600">512 Tokens</span>
+                </div>
+                <input id="input-tf-seq" type="range" min="64" max="4096" step="64" value="512" class="w-full accent-indigo-500 cursor-pointer" />
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <label for="input-tf-dim" class="text-slate-500">隐藏层特征维度 (D_model)</label>
+                  <span id="val-tf-dim" class="mono font-bold text-emerald-600">768</span>
+                </div>
+                <input id="input-tf-dim" type="range" min="256" max="2048" step="128" value="768" class="w-full accent-emerald-500 cursor-pointer" />
+              </div>
+            </div>
+
+            <!-- Memory Footprint vs On-Chip Buffer Telemetry -->
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-4">
+              <div class="flex flex-wrap items-center justify-between gap-2 text-xs mb-2">
+                <span class="font-semibold text-slate-700">单层 QKV+O 权重体积与 KV Cache 内存占用 (16-bit 精度)</span>
+                <span id="tf-mem-summary" class="mono font-bold text-rose-600">单层权重: 4.50 MB | 单层 KV Cache: 1.50 MB</span>
+              </div>
+              <p id="tf-phase-explanation" class="text-xs text-slate-500 leading-relaxed">
+                在 Prefill 阶段，L=512 个 Token 并行输入，线性层表现为高算术强度的矩阵-矩阵乘法 (GEMM)；但进入 Decode 阶段后，每次仅输入 1 个新 Token，退化为矩阵-向量乘 (GEMV)，且每生成一个 Token 都必须从片外重读全部权重与 KV Cache。
+              </p>
+            </div>
+
+            <!-- Real-time 3-Arch Performance Metrics under Current L & D -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="bg-slate-50 border border-indigo-500/30 rounded-xl p-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold text-indigo-700">Eyeriss (168 PEs)</span>
+                  <span id="tf-sim-eyeriss-badge" class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-700">NoC 受限</span>
+                </div>
+                <div id="tf-sim-eyeriss-util" class="text-xl font-bold mono text-slate-900 mt-1">38.2%</div>
+                <div class="text-[11px] text-slate-500">有效算力利用率</div>
+                <p id="tf-sim-eyeriss-detail" class="text-xs text-slate-700 mt-2 pt-2 border-t border-slate-200">
+                  R=S=1 导致对角线空间卷积复用失效；108KB GLB 无法容纳 KV Cache，需频繁分块读写 DRAM。
+                </p>
+              </div>
+
+              <div class="bg-slate-50 border border-emerald-500/30 rounded-xl p-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold text-emerald-700">ShiDianNao (64 PEs)</span>
+                  <span id="tf-sim-sdn-badge" class="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-700">SRAM 溢出</span>
+                </div>
+                <div id="tf-sim-sdn-util" class="text-xl font-bold mono text-slate-900 mt-1">12.5%</div>
+                <div class="text-[11px] text-slate-500">有效算力利用率</div>
+                <p id="tf-sim-sdn-detail" class="text-xs text-slate-700 mt-2 pt-2 border-t border-slate-200">
+                  128KB SB 与 64KB NBin 远小于数 MB 的 Transformer 权重与激活，且缺乏外部高带宽 DRAM DMA 引擎。
+                </p>
+              </div>
+
+              <div class="bg-slate-50 border border-amber-500/30 rounded-xl p-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold text-amber-700">NVDLA Large</span>
+                  <span id="tf-sim-nvdla-badge" class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-700">GEMM 高效</span>
+                </div>
+                <div id="tf-sim-nvdla-util" class="text-xl font-bold mono text-slate-900 mt-1">86.4%</div>
+                <div class="text-[11px] text-slate-500">有效算力利用率</div>
+                <p id="tf-sim-nvdla-detail" class="text-xs text-slate-700 mt-2 pt-2 border-t border-slate-200">
+                  Prefill 阶段将线性层映射为 1×1 Conv，C=D 与 K=D 完美对齐 Atomic-C(64)×Atomic-K(16) 阵列。
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right 5 Cols: Bar Chart Comparing CNN vs Transformer Prefill vs Decode -->
+        <div class="lg:col-span-5 bg-white shadow-sm border border-slate-200 rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+          <div>
+            <h3 class="text-base font-bold text-slate-900">CNN vs. Transformer (Prefill / Decode) 效率对比</h3>
+            <p class="text-xs text-slate-500 mt-0.5">三款架构在典型卷积层、Transformer 预填充与自回归解码下的归一化有效吞吐率</p>
+            <div class="relative h-64 w-full mt-3">
+              <canvas id="tfBarChart"></canvas>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mt-4 space-y-2 text-xs text-slate-700">
+            <div class="font-semibold text-indigo-700">💡 架构演进启示：从 CNN 加速器迈向 Transformer NPU</div>
+            <p class="leading-relaxed">
+              1. <strong>Eyeriss → Eyeriss v2</strong>：针对 1×1 点卷积与全连接层缺乏空间滑动复用的弱点，MIT 在 <a href="https://eems.mit.edu/wp-content/uploads/2019/04/2019_jetcas_eyerissv2.pdf" target="_blank" rel="noopener noreferrer" class="text-indigo-600 underline">Eyeriss v2</a> 中引入了 <strong>Hierarchical Mesh NoC</strong> 与 <strong>RS+ 数据流</strong>，允许在通道与卷积核维度直接空间展开。<br/>
+              2. <strong>NVDLA → 现代边缘 NPU</strong>：后续架构在保留 `Atomic-C × Atomic-K` 矩阵引擎的基础上，增加了<strong>双激活张量 MatMul 通道</strong>以及硬件级 <strong>Softmax / LayerNorm / RMSNorm 向量归约单元</strong>。
+            </p>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ==================== VIEW 4: MAESTRO DATAFLOW & ARCHITECTURE DSE EXPLORER ==================== -->
+    <section id="view-maestro" class="hidden space-y-6">
+
+      <!-- Top Banner: MAESTRO Framework Overview -->
+      <div class="bg-gradient-to-r from-indigo-50 via-white to-violet-50 border border-indigo-200 rounded-2xl p-4 sm:p-6 shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div class="max-w-3xl">
+            <div class="flex items-center gap-2 mb-1.5">
+              <span class="text-xs font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-violet-100 text-violet-800 border border-violet-300">Georgia Tech & NVIDIA · MICRO 2019</span>
+              <span class="text-xs text-slate-600 mono">MAESTRO: Modeling Accelerator Efficiency via Spatio-Temporal Reuse & Occupancy</span>
+            </div>
+            <h2 class="text-lg sm:text-xl font-bold text-slate-900">MAESTRO 数据中心指令 (Data-Centric Directives) 与硬件设计空间探索器 (DSE)</h2>
+            <p class="text-xs sm:text-sm text-slate-700 mt-1 leading-relaxed">
+              传统循环嵌套 (Loop-Nest) 属于“计算中心”表达，难以直接量化片上多播与归约收益。<a href="https://arxiv.org/html/1805.02566v6" target="_blank" rel="noopener noreferrer" class="text-indigo-600 underline font-medium">MAESTRO (MICRO'19)</a> 提出了以数据移动为一等公民的四大原语：<code>SpatialMap(sz, ofs)</code>、<code>TemporalMap(sz, ofs)</code>、<code>Cluster(P)</code> 与指令顺序，将 Eyeriss、ShiDianNao、NVDLA 统一抽象为 <strong>YR-P</strong>、<strong>YX-P</strong> 与 <strong>KC-P</strong> 三类规范数据流，并通过五大分析引擎在毫秒级完成硬件参数空间探索 (DSE)。
+            </p>
+          </div>
+
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm min-w-[240px] space-y-1.5">
+            <div class="text-xs font-bold text-slate-800 border-b border-slate-200 pb-1">MAESTRO 五大核心分析引擎流水线</div>
+            <div class="text-[11px] text-slate-700 flex items-center justify-between"><span>1. Tensor Analysis (TA)</span><span class="mono text-indigo-600 font-semibold">张量维度耦合</span></div>
+            <div class="text-[11px] text-slate-700 flex items-center justify-between"><span>2. Cluster Analysis (CLA)</span><span class="mono text-violet-600 font-semibold">多维并行聚类</span></div>
+            <div class="text-[11px] text-slate-700 flex items-center justify-between"><span>3. Reuse Analysis (RA)</span><span class="mono text-emerald-600 font-semibold">空/时多播与归约</span></div>
+            <div class="text-[11px] text-slate-700 flex items-center justify-between"><span>4. Performance (PA)</span><span class="mono text-amber-600 font-semibold">Pipe NoC 屋顶线</span></div>
+            <div class="text-[11px] text-slate-700 flex items-center justify-between"><span>5. Cost Analysis (CA)</span><span class="mono text-rose-600 font-semibold">CACTI 28nm 能耗</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Part 1: Interactive MAESTRO Data-Centric Directive Compiler & Reuse Matrix -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900">1. MAESTRO 数据中心指令 (`.m` DSL) 交互解析器与四维复用推导</h3>
+            <p class="text-xs text-slate-600 mt-0.5">切换 MAESTRO 论文 Table 3 中的三款加速器规范数据流，查看其 Cluster 分层映射代码及推导出的硬件复用需求</p>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <button type="button" data-mflow="yr_p" class="maestro-flow-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white shadow-sm">
+              YR-P 数据流 (Eyeriss 风格 · 空间映射 Y & R)
+            </button>
+            <button type="button" data-mflow="yx_p" class="maestro-flow-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200">
+              YX-P 数据流 (ShiDianNao 风格 · 空间映射 Y' & X')
+            </button>
+            <button type="button" data-mflow="kc_p" class="maestro-flow-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200">
+              KC-P 数据流 (NVDLA 风格 · 空间映射 K & C)
+            </button>
+            <button type="button" data-mflow="adaptive" class="maestro-flow-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200">
+              Adaptive 自适应数据流 (MAERI / FlexFlow)
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- Left 5 Cols: MAESTRO .m DSL Code Box -->
+          <div class="lg:col-span-5 bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">MAESTRO Dataflow Specification (.m DSL)</span>
+                <span id="maestro-dsl-tag" class="text-xs mono px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-semibold">YR-P (Row-Stationary)</span>
+              </div>
+              <pre id="maestro-dsl-code" class="bg-white border border-slate-200 rounded-lg p-3.5 text-xs mono text-slate-800 overflow-x-auto leading-relaxed"></pre>
+            </div>
+            <div class="mt-3 pt-3 border-t border-slate-200 text-xs text-slate-600 leading-relaxed" id="maestro-dsl-note">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- Right 7 Cols: MAESTRO Reuse Taxonomy Breakdown (Table 1 & Table 2) -->
+          <div class="lg:col-span-7 space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="maestro-reuse-cards">
+              <!-- Populated by JS: Spatial Multicast, Temporal Multicast, Spatial Reduction, Temporal Reduction -->
+            </div>
+
+            <!-- Operator Preference Bar across 5 Operator Types (MAESTRO Figure 10 & 11) -->
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+              <div class="text-xs font-bold text-slate-800 mb-2">MAESTRO 论文实测：该数据流在不同网络算子下的复用因子与偏好剖析</div>
+              <p id="maestro-op-preference" class="text-xs text-slate-700 leading-relaxed"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Part 2: Interactive MAESTRO 4-Parameter Hardware Design Space Explorer (DSE) -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+          <div>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900">2. MAESTRO 硬件参数设计空间探索器 (4-Parameter Hardware DSE Simulator)</h3>
+            <p class="text-xs text-slate-600 mt-0.5">复现 MAESTRO 论文 Section 5.2：调节 PE 数量、NoC 带宽、L1/L2 缓冲容量与目标算子类型，实时对比三款数据流的延迟、能耗拆解与 EDP</p>
+          </div>
+
+          <!-- Operator Layer Preset Selector (MAESTRO Table 4) -->
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <button type="button" data-mop="early_conv" class="maestro-op-btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-600 text-white">
+              浅层高分辨率卷积 (ResNet50 CONV1: 224×224, C=3, K=64)
+            </button>
+            <button type="button" data-mop="late_conv" class="maestro-op-btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200">
+              深层多通道卷积 (VGG16 CONV13: 14×14, C=512, K=512)
+            </button>
+            <button type="button" data-mop="pw_transformer" class="maestro-op-btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200">
+              1×1 点卷积 / Transformer 投影 (L=512, C=768, K=768)
+            </button>
+            <button type="button" data-mop="dw_conv" class="maestro-op-btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200">
+              Depthwise 深度可分离卷积 (MobileNetV2 DWConv)
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 Hardware Parameter Sliders + Hardware Multicast/Reduction Switch -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <label for="dse-pe-count" class="font-medium text-slate-700">1. PE 阵列总规模 (PEs)</label>
+              <span id="val-dse-pe" class="mono font-bold text-indigo-600">256 PEs</span>
+            </div>
+            <input id="dse-pe-count" type="range" min="32" max="1024" step="32" value="256" class="w-full accent-indigo-600 cursor-pointer" />
+            <div class="text-[11px] text-slate-500 mt-0.5">控制空间并行度上限与面积开销</div>
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <label for="dse-noc-bw" class="font-medium text-slate-700">2. 片上网络带宽 (NoC BW)</label>
+              <span id="val-dse-bw" class="mono font-bold text-emerald-600">32 GB/s</span>
+            </div>
+            <input id="dse-noc-bw" type="range" min="4" max="128" step="4" value="32" class="w-full accent-emerald-600 cursor-pointer" />
+            <div class="text-[11px] text-slate-500 mt-0.5">MAESTRO Pipe 模型管道宽度 (GB/s)</div>
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <label for="dse-l1-size" class="font-medium text-slate-700">3. 单 PE L1 Scratchpad</label>
+              <span id="val-dse-l1" class="mono font-bold text-amber-600">2.0 KB</span>
+            </div>
+            <input id="dse-l1-size" type="range" min="0.5" max="16" step="0.5" value="2.0" class="w-full accent-amber-600 cursor-pointer" />
+            <div class="text-[11px] text-slate-500 mt-0.5">决定内层循环 Tile 驻留容量</div>
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <label for="dse-l2-size" class="font-medium text-slate-700">4. 共享 L2 Global Buffer</label>
+              <span id="val-dse-l2" class="mono font-bold text-violet-600">512 KB</span>
+            </div>
+            <input id="dse-l2-size" type="range" min="64" max="2048" step="64" value="512" class="w-full accent-violet-600 cursor-pointer" />
+            <div class="text-[11px] text-slate-500 mt-0.5">过滤片外 DRAM 访存的二级缓存</div>
+          </div>
+        </div>
+
+        <!-- DSE Result KPI Cards for YR-P (Eyeriss), YX-P (ShiDianNao), KC-P (NVDLA) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="dse-kpi-cards">
+          <!-- Populated dynamically by JS -->
+        </div>
+
+        <!-- Two Side-by-Side MAESTRO DSE Charts: Energy Breakdown & Roofline / NoC Bandwidth Bottleneck -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
+          <div class="lg:col-span-6 bg-slate-50 border border-slate-200 rounded-xl p-4">
+            <h4 class="text-sm font-bold text-slate-900">MAESTRO CACTI 能耗拆解 (MAC 运算 vs. L1 访问 vs. L2 访问 vs. NoC)</h4>
+            <p class="text-xs text-slate-600 mt-0.5">复现 MAESTRO Figure 12：展示数据流复用因子如何显著改变 L1/L2 缓冲访问能耗占比</p>
+            <div class="relative h-64 w-full mt-3">
+              <canvas id="maestroEnergyChart"></canvas>
+            </div>
+          </div>
+
+          <div class="lg:col-span-6 bg-slate-50 border border-slate-200 rounded-xl p-4">
+            <h4 class="text-sm font-bold text-slate-900">NoC 带宽需求与硬件吞吐屋顶线 (Bandwidth vs. Effective Throughput)</h4>
+            <p class="text-xs text-slate-600 mt-0.5">复现 MAESTRO Figure 11(c) & Figure 13：观察不同数据流对片上网络带宽的敏感度与通信瓶颈</p>
+            <div class="relative h-64 w-full mt-3">
+              <canvas id="maestroPerfChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- GitHub Deployment & Source Export Modal -->
+  <div id="github-modal" class="fixed inset-0 z-50 hidden bg-slate-100/40 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-100 border border-slate-300 rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          <h3 class="text-base sm:text-lg font-bold text-slate-900">如何将此可视化项目部署到 GitHub Pages</h3>
+        </div>
+        <button id="btn-close-github-modal" type="button" class="text-slate-500 hover:text-slate-900 px-2 py-1 rounded-lg text-sm">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs sm:text-sm text-slate-700">
+        <p>本前端页面采用<strong>零构建依赖的单文件架构 (Single-File HTML5 + Tailwind CSS + Chart.js + 原生交互式 SVG)</strong>，无需 Node.js 编译即可直接托管到 GitHub Pages：</p>
+        <div class="bg-slate-50 rounded-xl border border-slate-200 p-3.5 mono text-xs text-emerald-700 space-y-1 overflow-x-auto">
+          <div># 1. 解压仓库包或将本文件重命名为 index.html</div>
+          <div>git init</div>
+          <div>git add index.html README.md .nojekyll</div>
+          <div>git commit -m "feat: add interactive Eyeriss, ShiDianNao, and NVDLA architecture visualizer"</div>
+          <div>git branch -M main</div>
+          <div>git remote add origin https://github.com/&lt;your-username&gt;/&lt;repo-name&gt;.git</div>
+          <div>git push -u origin main</div>
+        </div>
+        <p class="text-xs text-slate-500">推送后，在 GitHub 仓库进入 <strong>Settings → Pages → Build and deployment</strong>，将 Branch 选择为 <code>main / (root)</code> 并保存，约 30 秒即可生成公开在线演示网址。</p>
+      </div>
+
+      <div class="flex items-center justify-between pt-3 border-t border-slate-200">
+        <button id="btn-copy-commands" type="button" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors">
+          复制 Git 部署命令
+        </button>
+        <span id="copy-toast" class="text-xs text-emerald-600 font-medium opacity-0 transition-opacity">✓ 已复制到剪贴板</span>
+        <button id="btn-close-github-modal-bottom" type="button" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium">
+          关闭窗口
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-200 bg-slate-50 py-4 px-4 sm:px-6 text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <div>DNN Accelerator Architecture Visualizer · 支持 GitHub Pages 静态部署</div>
+      <div class="flex items-center gap-4">
+        <a href="https://courses.cs.washington.edu/courses/cse550/21au/papers/CSE550.Eyeriss.pdf" target="_blank" rel="noopener noreferrer" class="hover:text-indigo-600 underline">Eyeriss (JSSC'17)</a>
+        <a href="https://dl.acm.org/doi/pdf/10.1145/2749469.2750389" target="_blank" rel="noopener noreferrer" class="hover:text-emerald-600 underline">ShiDianNao (ISCA'15)</a>
+        <a href="https://nvdla.org/hw/v1/hwarch.html" target="_blank" rel="noopener noreferrer" class="hover:text-amber-600 underline">NVDLA Spec (v1)</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Application Logic -->
+  <script>
+    // ============================================================================
+    // 1. ARCHITECTURAL KNOWLEDGE BASE (Eyeriss, ShiDianNao, NVDLA)
+    // ============================================================================
+    const ARCH_DATA = {
+      eyeriss: {
+        name: 'Eyeriss',
+        badge: 'MIT · ISCA 2016 / JSSC 2017',
+        title: 'Eyeriss 空间架构与分级片上网络 (GIN + LN)',
+        paperUrl: 'https://courses.cs.washington.edu/courses/cse550/21au/papers/CSE550.Eyeriss.pdf',
+        submodes: [
+          { id: 'rs_conv', label: '卷积层 RS 映射模式' },
+          { id: 'rlc_mem', label: 'RLC 压缩与门控视图' }
+        ],
+        defaultComponent: 'pe',
+        components: {
+          dram_rlc: {
+            name: 'Off-Chip DRAM & RLC Codec (游程编码压缩引擎)',
+            tag: 'Off-Chip Interface',
+            formula: '64-bit Bus + 5-bit Zero Run-Length',
+            desc: '由于 ReLU 激活函数在 CNN 特征图中产生大量零值，Eyeriss 在片外 DRAM 与片上全局缓冲区 (GLB) 之间集成了游程编码压缩/解码器 (Run-Length Compression, RLC)，将连续的零压缩为 5-bit 游程长度，大幅降低高能耗的 DRAM 访存。',
+            specs: [
+              { k: '压缩算法', v: '5-bit Run-Length (RLC)' },
+              { k: '异步接口位宽', v: '64-bit 双向数据总线' },
+              { k: 'AlexNet 带宽节省', v: '显著减少 DRAM 读写次数' },
+              { k: 'DRAM 访存比', v: '0.0029 Access/MAC' }
+            ],
+            bullets: [
+              '将每 64-bit 数据块拆分为非零 16-bit 数据与 5-bit 零游程计数（最多连续表示 31 个零）。',
+              '对输入特征图 (Ifmap) 与输出特征图进行片上解压与压缩，避免无效零数据占用片外总线。',
+              '结合顶层时钟管理，与内部计算核心采用异步 FIFO 桥接。'
+            ],
+            insightTitle: '为什么片外压缩至关重要？',
+            insightText: '在 65nm 工艺下，一次片外 DRAM 访问的能耗约为一次 16-bit 乘加运算 (MAC) 的 200 倍。RLC 与局部复用结合使 AlexNet 实测功耗仅 278 mW。'
+          },
+          glb: {
+            name: 'Global Buffer (108 KB 片上全局缓冲区)',
+            tag: 'Level-2 Memory',
+            formula: '108 KB SRAM (27 Banks × 2KB × 2)',
+            desc: '位于片外 DRAM 与 168-PE 阵列之间的二级大容量 SRAM 缓存，负责缓存解压缩后的输入特征图 (Ifmap)、卷积核权重 (Filter) 以及跨层累加的部分和 (Psum)。',
+            specs: [
+              { k: '总容量', v: '108 KB SRAM' },
+              { k: '存储分配策略', v: 'Ifmap / Filter / Psum 动态共享' },
+              { k: '读写端口协议', v: '连接 GIN 与 Psum 写回总线' },
+              { k: '相对能耗开销', v: '~6× RF 访问能耗' }
+            ],
+            bullets: [
+              '当卷积层通道数或特征图尺寸超出 PE 阵列单次映射容量时，GLB 保存中间部分和 (Psum)，无需写回片外 DRAM。',
+              '通过扫描链 (Scan Chain) 静态配置每个卷积层的分块 (Tiling) 映射参数。',
+              '为 GIN (Global Input Network) 提供高带宽单周期数据供给。'
+            ],
+            insightTitle: '四级存储层次的核心枢纽',
+            insightText: 'Eyeriss 构建了 DRAM → GLB (108KB) → 阵列间局部网络 (LN) → PE Spad (寄存器/小SRAM) 四级存储，层层过滤数据搬移。'
+          },
+          gin_ln: {
+            name: 'Hierarchical NoC: GIN (全局输入网) + LN (局部互连网)',
+            tag: 'On-Chip Interconnect',
+            formula: '12 Y-Bus + 14 X-Bus + Inter-PE LN',
+            desc: '为支撑 Row-Stationary 数据流中灵活动态的广播模式，Eyeriss 设计了由 Y-Bus 与 X-Bus 组成的两级全局输入网络 (GIN)，配合 PE 之间垂直/对角直连的局部网络 (LN)。',
+            specs: [
+              { k: 'GIN 拓扑结构', v: '1 条 Y-Bus + 12 条水平 X-Bus' },
+              { k: '路由控制机制', v: '基于 (row, col) Tag 匹配多播' },
+              { k: '单周期传输', v: 'Multicast / Point-to-Point' },
+              { k: 'LN 局部直连', v: '垂直 Psum 累加链 (无需经 GLB)' }
+            ],
+            bullets: [
+              '每個控制器包含 5-bit Tag (row 或者是 col ID)，当总线上的数据 Tag 与控制器配置匹配时即刻放行，实现任意子集单周期多播。',
+              '同一卷积核行通过水平 X-Bus 多播给同行所有 PE；同一输入特征图行通过 Y/X Tag 组合对角多播给斜线上的 PE。',
+              '相邻行的 PE 通过专用局部网络 (LN) 直接向上/向下传递部分和 (Psum)，彻底省去写回 GLB 的开销。'
+            ],
+            insightTitle: 'Tag 匹配实现可重构空间映射',
+            insightText: '面对不同尺寸的卷积核 (如 11×11、5×5、3×3、1×1)，只需修改 GIN 控制器中的 (row, col) 接收 Tag，即可在 12×14 阵列中自由折叠或并行展开。'
+          },
+          pe_array: {
+            name: '12 × 14 Spatial PE Array (168 PE 二维空间计算阵列)',
+            tag: 'Spatial Compute Grid',
+            formula: '12 Rows × 14 Cols = 168 PEs',
+            desc: '由 168 个处理单元构成的二维空间阵列。在 Row-Stationary (RS) 数据流下，每个 PE 固定负责计算一行 1D 卷积原语，阵列在空间上协同拼出完整的 2D 卷积。',
+            specs: [
+              { k: '物理阵列维度', v: '12 行 × 14 列 (168 PEs)' },
+              { k: '核心数据流', v: 'Row-Stationary (RS 行驻留)' },
+              { k: '核心时钟频率', v: '100 – 250 MHz (65nm CMOS)' },
+              { k: '峰值算力', v: '33.6 – 84 GOPS (16-bit)' }
+            ],
+            bullets: [
+              '水平方向 (同行的 PE)：共享相同的卷积核权重行 (Filter Row)。',
+              '对角线方向 (斜向的 PE)：共享相同的输入特征图行 (Ifmap Row)，自然契合 2D 卷积窗口滑动。',
+              '垂直方向 (同列的 PE)：将各自算出的 1D 卷积部分和沿列累加，输出最终 2D 卷积结果行。'
+            ],
+            insightTitle: '为什么选 Row-Stationary 而不是 WS 或 OS？',
+            insightText: '传统权重驻留 (WS) 忽略了部分和移动代价，输出驻留 (OS) 忽略了权重局部驻留。RS 在 1D 行粒度上同时最大化权重、输入与部分和三者的局部复用，综合能效比现有数据流高 1.4×–2.5×。'
+          },
+          pe: {
+            name: 'Single PE Microarchitecture (单 PE 内部三级 Spad 与门控 MAC)',
+            tag: 'Core Microarchitecture',
+            formula: '3 Separated Spads + 2-Stage 16b MAC',
+            desc: '每个 Eyeriss PE 内部包含输入/输出异步缓冲 FIFO、三级独立分离的暂存器 (Filter / Ifmap / Psum Spad)、零值检测门控逻辑以及 16-bit 两级流水线乘加器。',
+            specs: [
+              { k: 'Filter Spad 容量', v: '224 × 16-bit SRAM (448 B)' },
+              { k: 'Ifmap Spad 容量', v: '12 × 16-bit Registers (24 B)' },
+              { k: 'Psum Spad 容量', v: '24 × 16-bit Registers (48 B)' },
+              { k: '算术流水线', v: '3 级流水 (1级读Spad + 2级MAC)' }
+            ],
+            bullets: [
+              '分离的三块 Spad 提供高并发带宽：Ifmap Spad 作滑动窗口移位寄存器，Filter Spad 支持多通道/多卷积核时间交织复用 (p filters × q channels)。',
+              '内置 Zero-Detection 数据门控电路：当检测到读取的 Ifmap 激活值为 0 时，立即阻断后续 Filter Spad 读取与 MAC 翻转，节省 45% 的 PE 功耗。',
+              '乘法器产生的 32-bit 结果可根据层级动态范围可配置截断为 16-bit。'
+            ],
+            insightTitle: '极致压榨寄存器级局部性',
+            insightText: '一次 1D 卷积窗口滑动只需在 12×16b 的 Ifmap 寄存器组内移位 1 个像素，绝大部分操作发生在能耗最低的本地 Spad 中。'
+          }
+        },
+        simSteps: [
+          {
+            title: 'Cycle 0: 卷积核权重行水平多播 (Filter Row Horizontal Multicast)',
+            desc: 'GLB 通过 GIN 将 3×3 卷积核的三行权重 W[0,*], W[1,*], W[2,*] 分别水平广播至第 0、1、2 行的所有 PE，并驻留在各自的 224×16b Filter Spad 中。',
+            metrics: [95, 40, 30],
+            cells: [
+              { r: 0, c: 0, w: 'W row0', i: 'Wait', p: '0', state: 'weight' },
+              { r: 0, c: 1, w: 'W row0', i: 'Wait', p: '0', state: 'weight' },
+              { r: 0, c: 2, w: 'W row0', i: 'Wait', p: '0', state: 'weight' },
+              { r: 1, c: 0, w: 'W row1', i: 'Wait', p: '0', state: 'weight' },
+              { r: 1, c: 1, w: 'W row1', i: 'Wait', p: '0', state: 'weight' },
+              { r: 1, c: 2, w: 'W row1', i: 'Wait', p: '0', state: 'weight' },
+              { r: 2, c: 0, w: 'W row2', i: 'Wait', p: '0', state: 'weight' },
+              { r: 2, c: 1, w: 'W row2', i: 'Wait', p: '0', state: 'weight' },
+              { r: 2, c: 2, w: 'W row2', i: 'Wait', p: '0', state: 'weight' }
+            ]
+          },
+          {
+            title: 'Cycle 1: 输入特征图行对角多播 (Ifmap Diagonal Reuse)',
+            desc: '输入特征图行 I[0,*] 注入 PE(0,0)；I[1,*] 沿对角线同时多播给 PE(1,0) 与 PE(0,1)；I[2,*] 沿主对角线同时多播给 PE(2,0)、PE(1,1) 与 PE(0,2)！',
+            metrics: [95, 92, 45],
+            cells: [
+              { r: 0, c: 0, w: 'W row0', i: 'I row0', p: 'MAC', state: 'ifmap' },
+              { r: 0, c: 1, w: 'W row0', i: 'I row1 ↗', p: 'MAC', state: 'ifmap' },
+              { r: 0, c: 2, w: 'W row0', i: 'I row2 ↗', p: 'MAC', state: 'ifmap' },
+              { r: 1, c: 0, w: 'W row1', i: 'I row1 ↗', p: 'MAC', state: 'ifmap' },
+              { r: 1, c: 1, w: 'W row1', i: 'I row2 ↗', p: 'MAC', state: 'ifmap' },
+              { r: 1, c: 2, w: 'W row1', i: 'I row3 ↗', p: 'MAC', state: 'ifmap' },
+              { r: 2, c: 0, w: 'W row2', i: 'I row2 ↗', p: 'MAC', state: 'ifmap' },
+              { r: 2, c: 1, w: 'W row2', i: 'I row3 ↗', p: 'MAC', state: 'ifmap' },
+              { r: 2, c: 2, w: 'W row2', i: 'I row4 ↗', p: 'MAC', state: 'ifmap' }
+            ]
+          },
+          {
+            title: 'Cycle 2: PE 内部 1D 卷积窗口滑动与零值门控 (Sliding Window in Spad)',
+            desc: '每个 PE 在本地 12×16b Ifmap 寄存器组中向右滑动 1D 窗口，与本地 Filter Spad 中的权重做乘加。遇到零激活时自动触发 Data Gating 关断乘法器。',
+            metrics: [96, 94, 70],
+            cells: [
+              { r: 0, c: 0, w: 'W[0,0..2]', i: 'Slide 1D', p: 'P00', state: 'compute' },
+              { r: 0, c: 1, w: 'W[0,0..2]', i: 'Slide 1D', p: 'P01', state: 'compute' },
+              { r: 0, c: 2, w: 'W[0,0..2]', i: 'ZeroGate', p: 'Skip 0', state: 'compute' },
+              { r: 1, c: 0, w: 'W[1,0..2]', i: 'Slide 1D', p: 'P10', state: 'compute' },
+              { r: 1, c: 1, w: 'W[1,0..2]', i: 'Slide 1D', p: 'P11', state: 'compute' },
+              { r: 1, c: 2, w: 'W[1,0..2]', i: 'Slide 1D', p: 'P12', state: 'compute' },
+              { r: 2, c: 0, w: 'W[2,0..2]', i: 'Slide 1D', p: 'P20', state: 'compute' },
+              { r: 2, c: 1, w: 'W[2,0..2]', i: 'Slide 1D', p: 'P21', state: 'compute' },
+              { r: 2, c: 2, w: 'W[2,0..2]', i: 'Slide 1D', p: 'P22', state: 'compute' }
+            ]
+          },
+          {
+            title: 'Cycle 3: 第一级垂直部分和传递 (LN Vertical Psum Forwarding Row 0 → Row 1)',
+            desc: '第 0 行 PE 完成 1D 卷积行部分和后，通过阵列间局部网络 (LN) 直接向下发送给第 1 行对应列的 PE，在 Psum Spad 中完成跨行累加。',
+            metrics: [94, 90, 92],
+            cells: [
+              { r: 0, c: 0, w: 'W row0', i: 'I row0', p: 'Send ↓', state: 'psum' },
+              { r: 0, c: 1, w: 'W row0', i: 'I row1', p: 'Send ↓', state: 'psum' },
+              { r: 0, c: 2, w: 'W row0', i: 'I row2', p: 'Send ↓', state: 'psum' },
+              { r: 1, c: 0, w: 'W row1', i: 'I row1', p: 'P00+P10 ↓', state: 'psum' },
+              { r: 1, c: 1, w: 'W row1', i: 'I row2', p: 'P01+P11 ↓', state: 'psum' },
+              { r: 1, c: 2, w: 'W row1', i: 'I row3', p: 'P02+P12 ↓', state: 'psum' },
+              { r: 2, c: 0, w: 'W row2', i: 'I row2', p: 'P20', state: 'compute' },
+              { r: 2, c: 1, w: 'W row2', i: 'I row3', p: 'P21', state: 'compute' },
+              { r: 2, c: 2, w: 'W row2', i: 'I row4', p: 'P22', state: 'compute' }
+            ]
+          },
+          {
+            title: 'Cycle 4: 第二级垂直累加完成完整 2D 卷积行 (Row 1 → Row 2 Reduction)',
+            desc: '第 1 行累加后的部分和继续沿 LN 向下传入第 2 行 PE，与第 2 行算出的 1D 结果相加：Out[c] = P0c + P1c + P2c，无需经过全局缓冲区即完成归约！',
+            metrics: [95, 92, 98],
+            cells: [
+              { r: 0, c: 0, w: 'W row0', i: 'Next Ch', p: 'Next', state: 'weight' },
+              { r: 0, c: 1, w: 'W row0', i: 'Next Ch', p: 'Next', state: 'weight' },
+              { r: 0, c: 2, w: 'W row0', i: 'Next Ch', p: 'Next', state: 'weight' },
+              { r: 1, c: 0, w: 'W row1', i: 'Next Ch', p: 'Forwarded', state: 'weight' },
+              { r: 1, c: 1, w: 'W row1', i: 'Next Ch', p: 'Forwarded', state: 'weight' },
+              { r: 1, c: 2, w: 'W row1', i: 'Next Ch', p: 'Forwarded', state: 'weight' },
+              { r: 2, c: 0, w: 'W row2', i: 'I row2', p: '∑ Out Row0', state: 'psum' },
+              { r: 2, c: 1, w: 'W row2', i: 'I row3', p: '∑ Out Row1', state: 'psum' },
+              { r: 2, c: 2, w: 'W row2', i: 'I row4', p: '∑ Out Row2', state: 'psum' }
+            ]
+          },
+          {
+            title: 'Cycle 5: 输出激活写回 GLB 与 RLC 游程压缩输出',
+            desc: '底部第 2 行 PE 输出完整的卷积特征图行至 108KB GLB（或继续累加下一输入通道），最终经 ReLU 激活与 RLC 游程压缩写回片外 DRAM。',
+            metrics: [96, 94, 99],
+            cells: [
+              { r: 0, c: 0, w: 'Ch+1 W0', i: 'Ch+1 I0', p: 'Pipeline', state: 'compute' },
+              { r: 0, c: 1, w: 'Ch+1 W0', i: 'Ch+1 I1', p: 'Pipeline', state: 'compute' },
+              { r: 0, c: 2, w: 'Ch+1 W0', i: 'Ch+1 I2', p: 'Pipeline', state: 'compute' },
+              { r: 1, c: 0, w: 'Ch+1 W1', i: 'Ch+1 I1', p: 'Pipeline', state: 'compute' },
+              { r: 1, c: 1, w: 'Ch+1 W1', i: 'Ch+1 I2', p: 'Pipeline', state: 'compute' },
+              { r: 1, c: 2, w: 'Ch+1 W1', i: 'Ch+1 I3', p: 'Pipeline', state: 'compute' },
+              { r: 2, c: 0, w: 'Done', i: 'ReLU+RLC', p: '→ GLB Row0', state: 'ifmap' },
+              { r: 2, c: 1, w: 'Done', i: 'ReLU+RLC', p: '→ GLB Row1', state: 'ifmap' },
+              { r: 2, c: 2, w: 'Done', i: 'ReLU+RLC', p: '→ GLB Row2', state: 'ifmap' }
+            ]
+          }
+        ]
+      },
+
+      shidiannao: {
+        name: 'ShiDianNao (石电脑)',
+        badge: 'ICT CAS · ISCA 2015',
+        title: 'ShiDianNao 近传感全片上 2D Mesh 输出驻留架构',
+        paperUrl: 'https://dl.acm.org/doi/pdf/10.1145/2749469.2750389',
+        submodes: [
+          { id: 'os_mesh', label: '卷积层 2D 网格移位模式' },
+          { id: 'pooling_mode', label: '池化层比较/均值模式' }
+        ],
+        defaultComponent: 'nfu_mesh',
+        components: {
+          sensor_nbin: {
+            name: 'Image Sensor Interface & NBin (64 KB 输入神经元缓冲区)',
+            tag: 'Input Memory',
+            formula: '64 KB SRAM (16-bit × 64 Banks)',
+            desc: 'ShiDianNao 直接紧挨 CMOS 图像传感器部署，图像像素或上一层输出特征图存储在 64 KB 的片上输入缓冲区 (NBin) 中，按行/列模式喂入 8×8 PE 网格。',
+            specs: [
+              { k: 'NBin 总容量', v: '64 KB SRAM' },
+              { k: '数据位宽', v: '16-bit Fixed-Point' },
+              { k: '供电方式', v: '向 8×8 PE 阵列广播/边缘注入' },
+              { k: '片外 DRAM 流量', v: '0 Bytes (全片上驻留)' }
+            ],
+            bullets: [
+              '彻底消除传统视觉系统中“图像传感器 → 内存控制器 → DRAM → 加速器”的长路径功耗。',
+              '当卷积滑动窗口向右或向下移动时，NBin 只需向 PE 阵列的右侧边缘或底部边缘补充新进入视野的像素列/行。',
+              '支持与 NBout 进行乒乓角色切换或跨层直接回环。'
+            ],
+            insightTitle: 'Shifting Vision Processing Closer to the Sensor',
+            insightText: '通过将全部激活与权重放入仅 256 KB 的片上 SRAM (NBin 64KB + NBout 64KB + SB 128KB)，ShiDianNao 比 DianNao 节能约 60 倍。'
+          },
+          sb: {
+            name: 'SB (128 KB 突触权重缓冲区) & Control Decoder',
+            tag: 'Weight Memory',
+            formula: '128 KB Synapse Buffer + uCode Controller',
+            desc: '由于同一个输出特征图平面上的所有输出神经元共享同一个卷积核权重，SB 每个时钟周期只需读取 1 个权重 (或每组通道权重) 并广播给全部 64 个 PE。',
+            specs: [
+              { k: 'SB 总容量', v: '128 KB SRAM' },
+              { k: '单周期广播目标', v: '全部 8×8 = 64 个 PEs' },
+              { k: '控制器指令流', v: '微指令控制移位方向与累加' },
+              { k: '算术格式', v: '16-bit 截断定点数' }
+            ],
+            bullets: [
+              '利用 CNN 权值共享特性，SB 的读取带宽需求极低，1 个 16-bit 权重在同一周期被 64 个 PE 同时使用（64× 空间复用）。',
+              '相比 32-bit 浮点乘法器，ShiDianNao 采用的 16-bit 定点乘法器在 65nm 下体积缩小 6.10×、能效提升 7.33×。',
+              '指令译码器 (Decoder) 向 NFU、ALU 和三大缓存下发同步状态机控制信号。'
+            ],
+            insightTitle: '极致简化的权重供给网',
+            insightText: '不同于需要将不同权重分发给不同 PE 的架构，ShiDianNao 的 Output-Stationary 映射使所有 PE 在同一拍乘同一个卷积核权重 (Kx, Ky)，权重只需一条全局广播线。'
+          },
+          nfu_mesh: {
+            name: '2D Mesh NFU (8 × 8 = 64 PEs 二维网格神经功能单元)',
+            tag: '2D Mesh Core',
+            formula: '8 × 8 PEs with Right→Left & Down→Up Links',
+            desc: '不同于初代 DianNao 的 1D 向量加法树，ShiDianNao 将 NFU 设计为天然契合二维图像拓扑的 8×8 2D 网格阵列。每个 PE 固定对应输出特征图上的一个像素位置 (Output-Stationary)。',
+            specs: [
+              { k: 'PE 阵列拓扑', v: '8 × 8 (64 PEs) 2D Mesh' },
+              { k: '横向邻居链路', v: 'PE(x, y) ← PE(x+1, y) 左移' },
+              { k: '纵向邻居链路', v: 'PE(x, y) ← PE(x, y+1) 上移' },
+              { k: '芯片核心面积', v: '0.57 mm² (TSMC 65nm)' }
+            ],
+            bullets: [
+              '每个 PE 驻留计算 1 个输出像素：累加器保留当前输出神经元的 Partial Sum，直到 Kx × Ky × Cin 次乘加全部完成。',
+              '当计算卷积核偏移 (kx, ky) 时，全部 PE 只需将自身缓存的输入像素向左传递 (Right→Left) 或向上传递 (Down→Up)，即可在邻居中直接获得滑动窗口所需的下一个输入像素！',
+              '无需从 NBin 重复读取重叠的 2D 滑动窗口像素，最大化二维空间局部性。'
+            ],
+            insightTitle: '2D 滑动窗口与网格移位的完美同构',
+            insightText: '对于 K×K 卷积核，传统架构需重复读取 K² 次输入特征图；而在 ShiDianNao 的 8×8 网格中，内部 PE 的像素完全由右方与下方邻居移位供给！'
+          },
+          pe_alu: {
+            name: 'ShiDianNao Single PE & 1D Activation ALU Array',
+            tag: 'PE & Post-Op',
+            formula: '16b MUL + ADD + CMP + Local FIFO + ALU',
+            desc: '每个 ShiDianNao PE 内部集成 16-bit 乘法器、加法器、比较器（用于 Max Pooling）以及水平/垂直移位寄存器 FIFO；阵列输出端连接 1D 多功能 ALU 阵列以执行非线性激活函数。',
+            specs: [
+              { k: 'PE 内部运算器', v: '16-bit MUL + ADD + Max CMP' },
+              { k: '池化层支持', v: '原生支持 Max / Average Pooling' },
+              { k: '尾部 1D ALU', v: '分段线性逼近 Sigmoid / Tanh / ReLU' },
+              { k: '总功耗', v: '~320 mW @ 1 GHz' }
+            ],
+            bullets: [
+              '每个 PE 包含两个小型寄存器缓存队列：横向移位寄存器与纵向移位寄存器，支持跨行滑动窗口回退。',
+              '执行池化层时，关闭乘法器，仅启用 PE 内部的加法器（均值池化）或比较器（最大池化），同样利用网格移位汇聚窗口像素。',
+              '当 64 个 PE 完成输出神经元累加后，结果流经底部 1D ALU 完成激活函数计算并写入 NBout。'
+            ],
+            insightTitle: '统一支持卷积、池化与全连接',
+            insightText: '通过在 PE 内复用加法器与比较器，ShiDianNao 无需额外的独立池化引擎即可在同一 8×8 网格内高效完成全套 CNN 层。'
+          },
+          nbout: {
+            name: 'NBout (64 KB 输出神经元缓冲区)',
+            tag: 'Output Memory',
+            formula: '64 KB SRAM Output Buffer',
+            desc: '存储经 1D ALU 激活处理后的输出特征图神经元，或暂存跨通道分块时的中间累加结果，并可直接作为下一层卷积的输入源。',
+            specs: [
+              { k: 'NBout 总容量', v: '64 KB SRAM' },
+              { k: '写回源', v: '8×8 NFU → 1D ALU → NBout' },
+              { k: '跨层角色切换', v: '下一层直接作为输入源复用' },
+              { k: '相对 CPU 加速比', v: '46.38× 平均性能提升' }
+            ],
+            bullets: [
+              '当网络层的输入通道数较多需分批处理时，NBout 可把先前累加的中间部分和读回 PE 的累加器继续累加。',
+              '当前层推理结束后，输出特征图留在片上 SRAM 中直接供下一层使用，实现端到端零 DRAM 访问。',
+              '紧凑的 64 KB 容量足以容纳嵌入式视觉常用的中小型 CNN 特征图。'
+            ],
+            insightTitle: '片上乒乓闭环消除内存墙',
+            insightText: 'NBin 与 NBout 构成了片上特征图闭环流水，使嵌入式视觉芯片可以在无外部 DDR 颗粒的超低功耗场景下独立运行。'
+          }
+        },
+        simSteps: [
+          {
+            title: 'Cycle 0: 初始 2D 像素块加载与权重 W(0,0) 全局广播',
+            desc: 'NBin 将输入特征图块加载到 8×8 PE 网格（此处展示 3×3 子网格 PE(0,0)..PE(2,2)），SB 将卷积核第一个权重 W(0,0) 广播给所有 PE，各 PE 计算 Out += In(r,c) × W(0,0) 并驻留累加器。',
+            metrics: [100, 75, 100],
+            cells: [
+              { r: 0, c: 0, w: 'Bcast W00', i: 'Pixel(0,0)', p: 'Acc Out00', state: 'compute' },
+              { r: 0, c: 1, w: 'Bcast W00', i: 'Pixel(0,1)', p: 'Acc Out01', state: 'compute' },
+              { r: 0, c: 2, w: 'Bcast W00', i: 'Pixel(0,2)', p: 'Acc Out02', state: 'compute' },
+              { r: 1, c: 0, w: 'Bcast W00', i: 'Pixel(1,0)', p: 'Acc Out10', state: 'compute' },
+              { r: 1, c: 1, w: 'Bcast W00', i: 'Pixel(1,1)', p: 'Acc Out11', state: 'compute' },
+              { r: 1, c: 2, w: 'Bcast W00', i: 'Pixel(1,2)', p: 'Acc Out12', state: 'compute' },
+              { r: 2, c: 0, w: 'Bcast W00', i: 'Pixel(2,0)', p: 'Acc Out20', state: 'compute' },
+              { r: 2, c: 1, w: 'Bcast W00', i: 'Pixel(2,1)', p: 'Acc Out21', state: 'compute' },
+              { r: 2, c: 2, w: 'Bcast W00', i: 'Pixel(2,2)', p: 'Acc Out22', state: 'compute' }
+            ]
+          },
+          {
+            title: 'Cycle 1: 网格像素左移 (Right → Left Shift) 与 W(0,1) 广播',
+            desc: '每个 PE 直接从右侧邻居 PE(r, c+1) 获取输入像素（仅最右列从 NBin 补入新像素 Pixel(r,3)），SB 广播 W(0,1)，所有 PE 原地累加 Out += In(r,c+1) × W(0,1)！',
+            metrics: [100, 92, 100],
+            cells: [
+              { r: 0, c: 0, w: 'Bcast W01', i: '← Pixel(0,1)', p: 'Out00 +=', state: 'ifmap' },
+              { r: 0, c: 1, w: 'Bcast W01', i: '← Pixel(0,2)', p: 'Out01 +=', state: 'ifmap' },
+              { r: 0, c: 2, w: 'Bcast W01', i: 'NBin P(0,3)', p: 'Out02 +=', state: 'weight' },
+              { r: 1, c: 0, w: 'Bcast W01', i: '← Pixel(1,1)', p: 'Out10 +=', state: 'ifmap' },
+              { r: 1, c: 1, w: 'Bcast W01', i: '← Pixel(1,2)', p: 'Out11 +=', state: 'ifmap' },
+              { r: 1, c: 2, w: 'Bcast W01', i: 'NBin P(1,3)', p: 'Out12 +=', state: 'weight' },
+              { r: 2, c: 0, w: 'Bcast W01', i: '← Pixel(2,1)', p: 'Out20 +=', state: 'ifmap' },
+              { r: 2, c: 1, w: 'Bcast W01', i: '← Pixel(2,2)', p: 'Out21 +=', state: 'ifmap' },
+              { r: 2, c: 2, w: 'Bcast W01', i: 'NBin P(2,3)', p: 'Out22 +=', state: 'weight' }
+            ]
+          },
+          {
+            title: 'Cycle 2: 再次左移完成卷积核首行 & W(0,2) 广播',
+            desc: '像素继续沿水平网格左移一格，SB 广播 W(0,2)。内部 PE 完全通过片上近邻寄存器移动获取数据，无需访问 NBin SRAM。',
+            metrics: [100, 95, 100],
+            cells: [
+              { r: 0, c: 0, w: 'Bcast W02', i: '← Pixel(0,2)', p: 'Out00 +=', state: 'ifmap' },
+              { r: 0, c: 1, w: 'Bcast W02', i: '← Pixel(0,3)', p: 'Out01 +=', state: 'ifmap' },
+              { r: 0, c: 2, w: 'Bcast W02', i: 'NBin P(0,4)', p: 'Out02 +=', state: 'weight' },
+              { r: 1, c: 0, w: 'Bcast W02', i: '← Pixel(1,2)', p: 'Out10 +=', state: 'ifmap' },
+              { r: 1, c: 1, w: 'Bcast W02', i: '← Pixel(1,3)', p: 'Out11 +=', state: 'ifmap' },
+              { r: 1, c: 2, w: 'Bcast W02', i: 'NBin P(1,4)', p: 'Out12 +=', state: 'weight' },
+              { r: 2, c: 0, w: 'Bcast W02', i: '← Pixel(2,2)', p: 'Out20 +=', state: 'ifmap' },
+              { r: 2, c: 1, w: 'Bcast W02', i: '← Pixel(2,3)', p: 'Out21 +=', state: 'ifmap' },
+              { r: 2, c: 2, w: 'Bcast W02', i: 'NBin P(2,4)', p: 'Out22 +=', state: 'weight' }
+            ]
+          },
+          {
+            title: 'Cycle 3: 网格像素上移 (Down → Up Shift) 切换至卷积核第二行 W(1,0)',
+            desc: '进入卷积核下一行时，每个 PE 直接从正下方邻居 PE(r+1, c) 的垂直缓存中向上读取 Pixel(r+1, c)，SB 广播 W(1,0)！',
+            metrics: [100, 96, 100],
+            cells: [
+              { r: 0, c: 0, w: 'Bcast W10', i: '↑ Pixel(1,0)', p: 'Out00 +=', state: 'psum' },
+              { r: 0, c: 1, w: 'Bcast W10', i: '↑ Pixel(1,1)', p: 'Out01 +=', state: 'psum' },
+              { r: 0, c: 2, w: 'Bcast W10', i: '↑ Pixel(1,2)', p: 'Out02 +=', state: 'psum' },
+              { r: 1, c: 0, w: 'Bcast W10', i: '↑ Pixel(2,0)', p: 'Out10 +=', state: 'psum' },
+              { r: 1, c: 1, w: 'Bcast W10', i: '↑ Pixel(2,1)', p: 'Out11 +=', state: 'psum' },
+              { r: 1, c: 2, w: 'Bcast W10', i: '↑ Pixel(2,2)', p: 'Out12 +=', state: 'psum' },
+              { r: 2, c: 0, w: 'Bcast W10', i: 'NBin P(3,0)', p: 'Out20 +=', state: 'weight' },
+              { r: 2, c: 1, w: 'Bcast W10', i: 'NBin P(3,1)', p: 'Out21 +=', state: 'weight' },
+              { r: 2, c: 2, w: 'Bcast W10', i: 'NBin P(3,2)', p: 'Out22 +=', state: 'weight' }
+            ]
+          },
+          {
+            title: 'Cycle 4: 遍历完 Kx × Ky 卷积核窗口，Partial Sum 零搬移原地驻留',
+            desc: '重复“左移 + 上移”完成全部 9 个权重乘加。在整个过程中，Partial Sum 始终驻留在各 PE 累加器内，实现了 100% 的部分和零搬移 (Output-Stationary)！',
+            metrics: [100, 97, 100],
+            cells: [
+              { r: 0, c: 0, w: 'Bcast W22', i: '←↑ P(2,2)', p: '∑ Out00 Done', state: 'compute' },
+              { r: 0, c: 1, w: 'Bcast W22', i: '←↑ P(2,3)', p: '∑ Out01 Done', state: 'compute' },
+              { r: 0, c: 2, w: 'Bcast W22', i: '←↑ P(2,4)', p: '∑ Out02 Done', state: 'compute' },
+              { r: 1, c: 0, w: 'Bcast W22', i: '←↑ P(3,2)', p: '∑ Out10 Done', state: 'compute' },
+              { r: 1, c: 1, w: 'Bcast W22', i: '←↑ P(3,3)', p: '∑ Out11 Done', state: 'compute' },
+              { r: 1, c: 2, w: 'Bcast W22', i: '←↑ P(3,4)', p: '∑ Out12 Done', state: 'compute' },
+              { r: 2, c: 0, w: 'Bcast W22', i: '←↑ P(4,2)', p: '∑ Out20 Done', state: 'compute' },
+              { r: 2, c: 1, w: 'Bcast W22', i: '←↑ P(4,3)', p: '∑ Out21 Done', state: 'compute' },
+              { r: 2, c: 2, w: 'Bcast W22', i: '←↑ P(4,4)', p: '∑ Out22 Done', state: 'compute' }
+            ]
+          },
+          {
+            title: 'Cycle 5: 输出神经元流经 1D ALU 激活并写回 NBout (64 KB)',
+            desc: '64 个 PE 累加完成的输出像素写出至尾部 1D ALU 阵列完成非线性激活函数 (ReLU/Sigmoid/Tanh)，随后存入 64 KB NBout 供下一层直接使用。',
+            metrics: [100, 98, 100],
+            cells: [
+              { r: 0, c: 0, w: 'Idle/Next', i: 'Stream Out', p: '→ ALU → NBout', state: 'ifmap' },
+              { r: 0, c: 1, w: 'Idle/Next', i: 'Stream Out', p: '→ ALU → NBout', state: 'ifmap' },
+              { r: 0, c: 2, w: 'Idle/Next', i: 'Stream Out', p: '→ ALU → NBout', state: 'ifmap' },
+              { r: 1, c: 0, w: 'Idle/Next', i: 'Stream Out', p: '→ ALU → NBout', state: 'ifmap' },
+              { r: 1, c: 1, w: 'Idle/Next', i: 'Stream Out', p: '→ ALU → NBout', state: 'ifmap' },
+              { r: 1, c: 2, w: 'Idle/Next', i: 'Stream Out', p: '→ ALU → NBout', state: 'ifmap' },
+              { r: 2, c: 0, w: 'Idle/Next', i: 'Stream Out', p: '→ ALU → NBout', state: 'ifmap' },
+              { r: 2, c: 1, w: 'Idle/Next', i: 'Stream Out', p: '→ ALU → NBout', state: 'ifmap' },
+              { r: 2, c: 2, w: 'Idle/Next', i: 'Stream Out', p: '→ ALU → NBout', state: 'ifmap' }
+            ]
+          }
+        ]
+      },
+
+      nvdla: {
+        name: 'NVDLA (NVIDIA Deep Learning Accelerator)',
+        badge: 'NVIDIA · Modular Open Source Pipeline',
+        title: 'NVDLA 模块化推理流水线架构 (Fused / Independent 双模式)',
+        paperUrl: 'https://nvdla.org/hw/v1/hwarch.html',
+        submodes: [
+          { id: 'fused', label: 'Fused 融合流水线模式' },
+          { id: 'independent', label: 'Independent 独立访存模式' }
+        ],
+        defaultComponent: 'conv_core',
+        components: {
+          conv_core: {
+            name: 'Convolution Core (CDMA → CBUF → CSC → CMAC → CACC)',
+            tag: 'Primary Compute Engine',
+            formula: 'Atomic-C × Atomic-K 2D MAC Array',
+            desc: 'NVDLA 的核心算力引擎由五级硬件子模块串联组成：CDMA (卷积DMA)、CBUF (统一卷积缓冲区)、CSC (卷积序列控制器)、CMAC (二维乘加阵列) 与 CACC (累加器)，支持 Direct、Image-Input、Winograd 与 Batching 四种卷积模式。',
+            specs: [
+              { k: '内部五级子单元', v: 'CDMA / CBUF / CSC / CMAC / CACC' },
+              { k: 'MAC 并行度公式', v: 'Atomic-C (16–128) × Atomic-K (4–16)' },
+              { k: 'CBUF 容量配置', v: '2–32 Banks × 4KB–32KB (如 512KB)' },
+              { k: '支持数据精度', v: 'INT8 / INT16 / FP16 (可配置)' }
+            ],
+            bullets: [
+              'CDMA 从 DBBIF/SRAMIF 预取权重与特征数据（支持 60% 零值稀疏权重压缩，节省近半总线带宽）并填入 CBUF。',
+              'CMAC 在每个周期沿输入通道维度并行取 Atomic-C 个特征、沿输出卷积核维度并行算 Atomic-K 个核（例如 nv_large 为 64×16=1024 MACs）。',
+              '开启 Winograd 3×3 模式时，通过前后固定矩阵变换将乘法次数降低 2.25×；开启 Batching 模式时多张图像共享权重以突破全连接层带宽瓶颈。'
+            ],
+            insightTitle: '双缓冲寄存器 (Ping-Pong CSB) 与零气泡切换',
+            insightText: 'NVDLA 每个硬件引擎均配备双缓冲配置寄存器组 (Double-Buffered Register Groups)，当前层正在计算时 CPU/微控制器即可下发下一层配置，完成后零延迟无缝启动。'
+          },
+          sdp: {
+            name: 'SDP (Single Data Point Processor 单数据点处理器)',
+            tag: 'Activation & Element-wise',
+            formula: '1–16 Pipelines + Dual LUT (Linear / Non-Linear)',
+            desc: '紧接在 Convolution Core 之后的逐点线性与非线性处理引擎，负责执行 Bias 偏置加法、Batch Normalization 批归一化、Precision Scaling 精度缩放、Element-wise 逐元素加乘（如 ResNet 残差相加）以及激活函数。',
+            specs: [
+              { k: '流水线吞吐量', v: '1 ~ 16 Output Features / Cycle' },
+              { k: '线性运算支持', v: 'Bias Add / BatchNorm / Scaling' },
+              { k: '非线性激活', v: '原生 ReLU / PReLU + LUT 查表' },
+              { k: '双输入源通道', v: 'CACC 直连 FIFO 或 SDP-RDMA' }
+            ],
+            bullets: [
+              '支持三种粒度的缩放与偏置参数：Per-CNN (寄存器全局配置)、Per-Channel (按通道平面配置) 与 Per-Pixel (逐像素内存读取)。',
+              '对于 Sigmoid、Tanh 等复杂超越函数，采用两级查找表 (Linear LUT + Density LUT) 结合线性插值实现高精度硬件逼近。',
+              '在 Fused 融合模式下直接通过内部 FIFO 接收 CACC 累加输出，并可将结果直接送入下游 PDP。'
+            ],
+            insightTitle: '融合模式消除激活层往返访存',
+            insightText: '在 Fused 模式下，CONV → SDP → PDP 通过片上小 FIFO 直接串联成一条长流水线，避免了将中间未激活/未池化的庞大特征图写回 DRAM。'
+          },
+          pdp: {
+            name: 'PDP (Planar Data Processor 平面数据池化处理器)',
+            tag: 'Spatial Pooling Engine',
+            formula: 'Max / Min / Average Pooling (0–4 Throughput)',
+            desc: '专门负责通道内二维空间池化运算的硬件单元。可在运行时动态配置池化窗口大小与步长，支持直接从 SDP 接收数据流（Fused 模式）或通过专用 PDP-RDMA 从内存独立读取（Independent 模式）。',
+            specs: [
+              { k: '支持的池化算子', v: 'Max / Minimum / Average Pooling' },
+              { k: '可配置吞吐率', v: '0 ~ 4 Features / Cycle' },
+              { k: '工作模式', v: 'Fused (接 SDP) 或 Independent (DMA)' },
+              { k: '片上行缓存', v: '内置 Line Buffer 缓存跨行窗口' }
+            ],
+            bullets: [
+              '当目标场景无需硬件池化时，可在 RTL 参数中将 PDP Throughput 设为 0 以彻底裁剪该模块节省面积。',
+              '内置跨行缓冲器 (Line Buffer) 以支持 2×2、3×3 等二维滑动池化窗口的流式归约。',
+              '拥有独立的读/写 DMA 通道，可在卷积核繁忙时并行处理其它无依赖层的池化任务。'
+            ],
+            insightTitle: '可裁剪的模块化参数设计',
+            insightText: 'NVDLA 允许芯片设计者通过修改硬件参数表（如 Atomic-C/K、SDP/PDP/CDP 吞吐率）自动生成从微型 IoT (`nv_small`) 到自动驾驶级 (`nv_large`) 的定制 RTL。'
+          },
+          cdp: {
+            name: 'CDP (Cross-Channel Data Processor 跨通道归一化处理器)',
+            tag: 'Cross-Channel LRN',
+            formula: 'Cross-Channel Local Response Normalization (LRN)',
+            desc: '专门针对 AlexNet、GoogLeNet 等网络中的跨通道局部响应归一化 (LRN) 设计的硬件加速单元，沿通道维度 (Channel Dimension) 计算平方和并结合 LUT 完成幂次缩放。',
+            specs: [
+              { k: '核心加速算子', v: 'Local Response Normalization (LRN)' },
+              { k: '归一化滑动窗口', v: '跨相邻 n 个通道 (1, 3, 5, 7, 9)' },
+              { k: '可配置吞吐率', v: '0 ~ 4 Features / Cycle' },
+              { k: '非线性求幂实现', v: '平方和累加 + 专用 LUT 插值' }
+            ],
+            bullets: [
+              '与在平面空间维度工作的 PDP 互补，CDP 专门沿着通道轴 C 进行滑动窗口平方求和。',
+              '利用内部查找表 (LUT) 计算分母项 (j + α/n · ∑ x_i²)^(-β)，避免昂贵的硬件除法器与浮点指数器。',
+              '包含专属的 CDP-RDMA 与 CDP-WDMA，直接与 MCIF/SRAMIF 交互。'
+            ],
+            insightTitle: '任务级多引擎并发执行',
+            insightText: '当网络拓扑存在分支（如 Inception 多分支结构）且无数据依赖时，主控 CPU 可通过 CSB 同时激活 CONV、PDP、CDP 并行处理不同层的任务。'
+          },
+          rubik_bdma: {
+            name: 'RUBIK (数据重排引擎) · BDMA (桥接DMA) · CSB / DBBIF / SRAMIF',
+            tag: 'Memory & Reshape Fabric',
+            formula: 'DBBIF (DRAM) + SRAMIF (SRAM) + CSB Control',
+            desc: '负责高维张量内存格式重排与双存储系统高速搬移的支撑子系统。RUBIK 在不进行算术运算的前提下硬件级完成张量拆分、合并与反卷积通道折叠；BDMA 则在系统 DRAM (DBBIF) 与高带宽片上 SRAM (SRAMIF) 之间高速拷贝数据。',
+            specs: [
+              { k: 'RUBIK 三种模式', v: 'Contract (反卷积) / Split / Merge' },
+              { k: '主存接口 DBBIF', v: 'AMBA AXI4 连接系统 DRAM' },
+              { k: '二级接口 SRAMIF', v: 'AXI4 连接高带宽低延迟片上 SRAM' },
+              { k: '控制总线 CSB', v: '轻量级寄存器配置总线 + IRQ 中断' }
+            ],
+            bullets: [
+              'RUBIK Contract 模式专为步长 > 1 的反卷积 (Deconvolution) 设计，将扩展通道的数据立方体硬件重排还原为高分辨率输出特征图。',
+              'RUBIK Split / Merge 模式支持在多平面格式 (NCHW) 与 NVDLA 内部通道交织立方体格式之间高速无损转换。',
+              '二级存储接口 SRAMIF 可提供 DRAM 2×~4× 的带宽与 1/10~1/4 的延迟，BDMA 负责在两者间后台预取搬运。'
+            ],
+            insightTitle: '软硬件协同的 Command-Execute-Interrupt 机制',
+            insightText: '管理处理器 (CPU 或微控制器 COP) 通过 CSB 写入寄存器并发送 Activate 命令，硬件引擎执行完毕后拉高 IRQ 中断引脚汇报完成，驱动整个深度网络的流水调度。'
+          }
+        },
+        simSteps: [
+          {
+            title: 'Stage 0: CSB 双缓冲寄存器预配置与 CDMA 稀疏权重预取',
+            desc: 'CPU/微控制器通过 CSB 总线向双缓冲寄存器写入图层参数。CDMA 从 DBBIF/SRAMIF 读取输入特征图与压缩权重（跳过零权重节省近 50% 带宽）并写入 CBUF。',
+            metrics: [85, 80, 75],
+            cells: [
+              { r: 0, c: 0, w: 'CSB Config', i: 'Double-Buf', p: 'Layer Ready', state: 'weight' },
+              { r: 0, c: 1, w: 'CDMA Fetch', i: 'Sparse Wt', p: 'Decompress', state: 'ifmap' },
+              { r: 0, c: 2, w: 'CBUF Banks', i: 'Act + Wt', p: '4-Port RAM', state: 'compute' },
+              { r: 1, c: 0, w: 'CSC Ctrl', i: 'Standby', p: 'Wait CBUF', state: 'weight' },
+              { r: 1, c: 1, w: 'CMAC Array', i: 'Atomic C×K', p: 'Idle', state: 'weight' },
+              { r: 1, c: 2, w: 'CACC Acc', i: '32/48-bit', p: 'Idle', state: 'weight' },
+              { r: 2, c: 0, w: 'SDP Engine', i: 'BN / ReLU', p: 'Idle', state: 'weight' },
+              { r: 2, c: 1, w: 'PDP Engine', i: 'Pooling', p: 'Idle', state: 'weight' },
+              { r: 2, c: 2, w: 'CDP / RUBIK', i: 'LRN / Reshape', p: 'Idle', state: 'weight' }
+            ]
+          },
+          {
+            title: 'Stage 1: CBUF 多Bank并发读取与 CSC 序列调度 (Direct / Winograd)',
+            desc: 'CBUF (2–32 Banks) 通过独立特征读端口与权重读端口单周期吐出 Atomic-C 个通道数据；CSC 根据 Direct 或 Winograd 3×3 模式重排数据流送入 CMAC。',
+            metrics: [92, 90, 82],
+            cells: [
+              { r: 0, c: 0, w: 'CSB PingPong', i: 'Next Layer', p: 'Pre-loaded', state: 'weight' },
+              { r: 0, c: 1, w: 'CDMA Stream', i: 'Prefetching', p: '→ CBUF', state: 'ifmap' },
+              { r: 0, c: 2, w: 'CBUF Read', i: 'Atomic-C', p: '→ CSC', state: 'compute' },
+              { r: 1, c: 0, w: 'CSC Active', i: 'Winograd/Dir', p: '→ CMAC', state: 'compute' },
+              { r: 1, c: 1, w: 'CMAC Ready', i: '64×16 MACs', p: 'Warmup', state: 'ifmap' },
+              { r: 1, c: 2, w: 'CACC Ready', i: 'Clear Acc', p: 'Wait', state: 'weight' },
+              { r: 2, c: 0, w: 'SDP Engine', i: 'Fused FIFO', p: 'Ready', state: 'weight' },
+              { r: 2, c: 1, w: 'PDP Engine', i: 'Fused FIFO', p: 'Ready', state: 'weight' },
+              { r: 2, c: 2, w: 'SRAMIF/DBB', i: 'AXI4 Bus', p: 'Active', state: 'weight' }
+            ]
+          },
+          {
+            title: 'Stage 2: CMAC (Atomic-C × Atomic-K) 全速并行乘加与 CACC 累加',
+            desc: 'CMAC 二维乘加阵列在每个时钟周期同时执行 Atomic-C × Atomic-K 次乘加（如 nv_large 单周期 1024 MACs），部分和送入 CACC 累加器完成跨通道归约。',
+            metrics: [96, 95, 94],
+            cells: [
+              { r: 0, c: 0, w: 'CSB Active', i: 'Layer 1', p: 'Running', state: 'weight' },
+              { r: 0, c: 1, w: 'CDMA Active', i: 'Weight Reuse', p: 'Batching', state: 'ifmap' },
+              { r: 0, c: 2, w: 'CBUF Active', i: 'High BW', p: 'Feeding', state: 'ifmap' },
+              { r: 1, c: 0, w: 'CSC Stream', i: 'C×K Slice', p: '→ CMAC', state: 'compute' },
+              { r: 1, c: 1, w: 'CMAC 1024', i: 'C=64 × K=16', p: 'Full MAC!', state: 'compute' },
+              { r: 1, c: 2, w: 'CACC Add', i: 'Accumulate', p: '∑ PartialSum', state: 'psum' },
+              { r: 2, c: 0, w: 'SDP Engine', i: 'Wait CACC', p: 'FIFO Open', state: 'weight' },
+              { r: 2, c: 1, w: 'PDP Engine', i: 'Wait SDP', p: 'FIFO Open', state: 'weight' },
+              { r: 2, c: 2, w: 'CDP / RUBIK', i: 'Standby', p: 'Idle', state: 'weight' }
+            ]
+          },
+          {
+            title: 'Stage 3: Fused 融合流水线直通 SDP (BatchNorm + Bias + ReLU/LUT)',
+            desc: 'CACC 完成卷积核累加后，不写回 DRAM，而是通过片上小 FIFO 直接流式送入 SDP，单周期内完成批归一化 (BN)、偏置加法与 ReLU/LUT 激活函数！',
+            metrics: [96, 95, 98],
+            cells: [
+              { r: 0, c: 0, w: 'CSB Active', i: 'Fused Pipe', p: 'Zero DRAM', state: 'weight' },
+              { r: 0, c: 1, w: 'CDMA', i: 'Done Fetch', p: 'Idle', state: 'weight' },
+              { r: 0, c: 2, w: 'CBUF', i: 'Draining', p: '→ CSC', state: 'ifmap' },
+              { r: 1, c: 0, w: 'CSC', i: 'Last Tile', p: '→ CMAC', state: 'ifmap' },
+              { r: 1, c: 1, w: 'CMAC', i: 'Last Tile', p: '→ CACC', state: 'compute' },
+              { r: 1, c: 2, w: 'CACC Out', i: 'Direct FIFO', p: '→ SDP', state: 'psum' },
+              { r: 2, c: 0, w: 'SDP Active!', i: 'BN+Bias+ReLU', p: '16 Feat/Cyc', state: 'compute' },
+              { r: 2, c: 1, w: 'PDP Ready', i: 'LineBuffer', p: 'Recv SDP', state: 'ifmap' },
+              { r: 2, c: 2, w: 'Bypass DRAM', i: 'Saved Write', p: '100% OnChip', state: 'psum' }
+            ]
+          },
+          {
+            title: 'Stage 4: SDP → PDP 融合空间池化 (Max/Avg Pooling) 与写回',
+            desc: 'SDP 激活后的数据流继续通过内部 FIFO 直通 PDP (Planar Data Processor)，利用片上行缓冲完成 2×2 Max/Average Pooling，仅将降采样后的紧凑特征图写回 SRAMIF/DBBIF。',
+            metrics: [95, 96, 99],
+            cells: [
+              { r: 0, c: 0, w: 'CSB Switch', i: 'Next Layer', p: 'Armed', state: 'weight' },
+              { r: 0, c: 1, w: 'CDMA', i: 'Next Layer', p: 'Standby', state: 'weight' },
+              { r: 0, c: 2, w: 'CBUF', i: 'Ready', p: 'Standby', state: 'weight' },
+              { r: 1, c: 0, w: 'CSC', i: 'Done', p: 'Idle', state: 'weight' },
+              { r: 1, c: 1, w: 'CMAC', i: 'Done', p: 'Idle', state: 'weight' },
+              { r: 1, c: 2, w: 'CACC', i: 'Flushed', p: '→ SDP', state: 'ifmap' },
+              { r: 2, c: 0, w: 'SDP Stream', i: 'Activated', p: '→ PDP FIFO', state: 'psum' },
+              { r: 2, c: 1, w: 'PDP Active!', i: '2×2 MaxPool', p: '→ WDMA Out', state: 'compute' },
+              { r: 2, c: 2, w: 'SRAMIF/DBB', i: 'Write 1/4 Sz', p: 'IRQ Signal', state: 'ifmap' }
+            ]
+          },
+          {
+            title: 'Stage 5: IRQ 中断汇报与 CDP / RUBIK / BDMA 并发协同',
+            desc: 'PDP 写回完成后触发 IRQ 中断，双缓冲寄存器立即无缝切换至下一层配置；若后续包含跨通道 LRN 或反卷积重排，则由 CDP 或 RUBIK 引擎接力处理。',
+            metrics: [97, 96, 99],
+            cells: [
+              { r: 0, c: 0, w: 'IRQ Fired!', i: 'Swap Regs', p: '0-Cycle Gap', state: 'compute' },
+              { r: 0, c: 1, w: 'BDMA Engine', i: 'DRAM↔SRAM', p: 'Async Copy', state: 'ifmap' },
+              { r: 0, c: 2, w: 'CBUF', i: 'Layer N+1', p: 'Loading', state: 'ifmap' },
+              { r: 1, c: 0, w: 'CSC', i: 'Layer N+1', p: 'Active', state: 'compute' },
+              { r: 1, c: 1, w: 'CMAC', i: 'Layer N+1', p: 'Active', state: 'compute' },
+              { r: 1, c: 2, w: 'CACC', i: 'Layer N+1', p: 'Active', state: 'compute' },
+              { r: 2, c: 0, w: 'SDP', i: 'Standby', p: 'Ready', state: 'weight' },
+              { r: 2, c: 1, w: 'PDP', i: 'Completed', p: 'Done', state: 'weight' },
+              { r: 2, c: 2, w: 'CDP / RUBIK', i: 'LRN / Split', p: 'Parallel Op', state: 'psum' }
+            ]
+          }
+        ]
+      }
+    };
+
+    // ============================================================================
+    // 2. APPLICATION STATE
+    // ============================================================================
+    const state = {
+      mainView: 'explorer',       // 'explorer' | 'compare'
+      currentArch: 'eyeriss',     // 'eyeriss' | 'shidiannao' | 'nvdla'
+      currentSubmode: 'rs_conv',
+      selectedComp: 'pe',
+      simCycle: 0,
+      simPlaying: false,
+      simTimer: null,
+      workload: {
+        cin: 3,
+        kout: 96,
+        kernel: 11
+      }
+    };
+
+    let radarChartInstance = null;
+
+    // ============================================================================
+    // 3. SVG ARCHITECTURE DIAGRAM RENDERERS
+    // ============================================================================
+    function renderArchSvg() {
+      const container = document.getElementById('arch-svg-container');
+      const arch = state.currentArch;
+      const sel = state.selectedComp;
+      const sub = state.currentSubmode;
+
+      if (arch === 'eyeriss') {
+        const strokeFor = (id) => sel === id ? '#4f46e5' : '#cbd5e1';
+        const bgFor = (id) => sel === id ? '#eef2ff' : '#ffffff';
+        const rlcHighlight = sub === 'rlc_mem' ? 'stroke="#34d399" stroke-width="2.5"' : '';
+
+        container.innerHTML = `
+          <svg viewBox="0 0 680 340" class="w-full h-auto max-w-full select-none">
+            <defs>
+              <marker id="arrow-indigo" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#4f46e5" />
+              </marker>
+              <marker id="arrow-emerald" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#059669" />
+              </marker>
+              <marker id="arrow-amber" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#d97706" />
+              </marker>
+            </defs>
+
+            <!-- Off-chip DRAM & RLC Codec -->
+            <g class="arch-node" data-comp="dram_rlc">
+              <rect x="16" y="24" width="135" height="292" rx="12" fill="${bgFor('dram_rlc')}" stroke="${strokeFor('dram_rlc')}" stroke-width="2" ${rlcHighlight}/>
+              <text x="83" y="52" text-anchor="middle" fill="#0f172a" font-size="12" font-weight="700">Off-Chip DRAM</text>
+              <text x="83" y="70" text-anchor="middle" fill="#64748b" font-size="10">64-bit Async Bus</text>
+              <rect x="28" y="92" width="111" height="75" rx="8" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>
+              <text x="83" y="118" text-anchor="middle" fill="#059669" font-size="11" font-weight="700">RLC Decoder</text>
+              <text x="83" y="135" text-anchor="middle" fill="#334155" font-size="9.5">5-bit Zero Run-Length</text>
+              <text x="83" y="152" text-anchor="middle" fill="#64748b" font-size="9">Ifmap 解压输入</text>
+
+              <rect x="28" y="185" width="111" height="75" rx="8" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>
+              <text x="83" y="210" text-anchor="middle" fill="#0284c7" font-size="11" font-weight="700">ReLU + RLC Enc</text>
+              <text x="83" y="227" text-anchor="middle" fill="#334155" font-size="9.5">激活与零游程压缩</text>
+              <text x="83" y="244" text-anchor="middle" fill="#64748b" font-size="9">Ofmap 压缩写回</text>
+              <text x="83" y="295" text-anchor="middle" fill="#4f46e5" font-size="10" font-weight="600">点击查看 RLC 机制</text>
+            </g>
+
+            <!-- Global Buffer (108 KB GLB) -->
+            <g class="arch-node" data-comp="glb">
+              <rect x="178" y="24" width="130" height="292" rx="12" fill="${bgFor('glb')}" stroke="${strokeFor('glb')}" stroke-width="2"/>
+              <text x="243" y="52" text-anchor="middle" fill="#0f172a" font-size="12" font-weight="700">Global Buffer</text>
+              <text x="243" y="69" text-anchor="middle" fill="#4f46e5" font-size="11" font-weight="700">108 KB SRAM</text>
+              <rect x="192" y="88" width="102" height="52" rx="6" fill="#f8fafc" stroke="#6366f1" stroke-width="1.2"/>
+              <text x="243" y="110" text-anchor="middle" fill="#3730a3" font-size="10.5" font-weight="600">Filter Weights</text>
+              <text x="243" y="126" text-anchor="middle" fill="#64748b" font-size="9">水平行广播源</text>
+
+              <rect x="192" y="152" width="102" height="52" rx="6" fill="#f8fafc" stroke="#10b981" stroke-width="1.2"/>
+              <text x="243" y="174" text-anchor="middle" fill="#065f46" font-size="10.5" font-weight="600">Ifmap Activations</text>
+              <text x="243" y="190" text-anchor="middle" fill="#64748b" font-size="9">对角线广播源</text>
+
+              <rect x="192" y="216" width="102" height="52" rx="6" fill="#f8fafc" stroke="#f59e0b" stroke-width="1.2"/>
+              <text x="243" y="238" text-anchor="middle" fill="#92400e" font-size="10.5" font-weight="600">Partial Sums</text>
+              <text x="243" y="254" text-anchor="middle" fill="#64748b" font-size="9">跨分块累加缓存</text>
+              <text x="243" y="295" text-anchor="middle" fill="#4f46e5" font-size="10" font-weight="600">二级片上存储 (GLB)</text>
+            </g>
+
+            <!-- GIN & LN Interconnect -->
+            <g class="arch-node" data-comp="gin_ln">
+              <rect x="334" y="24" width="82" height="292" rx="12" fill="${bgFor('gin_ln')}" stroke="${strokeFor('gin_ln')}" stroke-width="2"/>
+              <text x="375" y="50" text-anchor="middle" fill="#0f172a" font-size="11.5" font-weight="700">GIN & LN</text>
+              <text x="375" y="66" text-anchor="middle" fill="#0284c7" font-size="9.5" font-weight="600">2-Level NoC</text>
+              <rect x="345" y="84" width="60" height="90" rx="6" fill="#f8fafc" stroke="#38bdf8" stroke-width="1.2"/>
+              <text x="375" y="108" text-anchor="middle" fill="#0369a1" font-size="10" font-weight="700">Y-Bus (12)</text>
+              <text x="375" y="126" text-anchor="middle" fill="#0369a1" font-size="10" font-weight="700">X-Bus (14)</text>
+              <text x="375" y="146" text-anchor="middle" fill="#64748b" font-size="8.5">(row,col) Tag</text>
+              <text x="375" y="160" text-anchor="middle" fill="#64748b" font-size="8.5">单周期多播</text>
+
+              <rect x="345" y="188" width="60" height="82" rx="6" fill="#f8fafc" stroke="#fbbf24" stroke-width="1.2"/>
+              <text x="375" y="212" text-anchor="middle" fill="#92400e" font-size="10" font-weight="700">Local Net</text>
+              <text x="375" y="230" text-anchor="middle" fill="#334155" font-size="9">Inter-PE LN</text>
+              <text x="375" y="248" text-anchor="middle" fill="#64748b" font-size="8.5">Psum 垂直传递</text>
+              <text x="375" y="295" text-anchor="middle" fill="#4f46e5" font-size="9.5" font-weight="600">片上互连网</text>
+            </g>
+
+            <!-- 12x14 PE Array -->
+            <g class="arch-node" data-comp="pe_array">
+              <rect x="440" y="24" width="224" height="175" rx="12" fill="${bgFor('pe_array')}" stroke="${strokeFor('pe_array')}" stroke-width="2"/>
+              <text x="552" y="48" text-anchor="middle" fill="#0f172a" font-size="12" font-weight="700">12 × 14 PE Array (168 PEs)</text>
+              <text x="552" y="64" text-anchor="middle" fill="#4338ca" font-size="10">Row-Stationary: 水平共享W · 对角复用I · 垂直累加P</text>
+
+              <!-- Mini 3x4 visual grid of PEs inside Array -->
+              <g transform="translate(458, 76)">
+                <rect x="0" y="0" width="38" height="28" rx="4" fill="#1e1b4b" stroke="#818cf8"/>
+                <text x="19" y="18" text-anchor="middle" fill="#1e1b4b" font-size="9.5" font-weight="600">PE0,0</text>
+                <rect x="48" y="0" width="38" height="28" rx="4" fill="#1e1b4b" stroke="#818cf8"/>
+                <text x="67" y="18" text-anchor="middle" fill="#1e1b4b" font-size="9.5" font-weight="600">PE0,1</text>
+                <rect x="96" y="0" width="38" height="28" rx="4" fill="#1e1b4b" stroke="#818cf8"/>
+                <text x="115" y="18" text-anchor="middle" fill="#1e1b4b" font-size="9.5" font-weight="600">PE0,2</text>
+                <rect x="144" y="0" width="38" height="28" rx="4" fill="#1e1b4b" stroke="#818cf8"/>
+                <text x="163" y="18" text-anchor="middle" fill="#1e1b4b" font-size="9.5" font-weight="600">PE0,13</text>
+
+                <rect x="0" y="38" width="38" height="28" rx="4" fill="#f8fafc" stroke="#6366f1"/>
+                <text x="19" y="56" text-anchor="middle" fill="#334155" font-size="9.5">PE1,0</text>
+                <rect x="48" y="38" width="38" height="28" rx="4" fill="#d1fae5" stroke="#34d399"/>
+                <text x="67" y="56" text-anchor="middle" fill="#065f46" font-size="9.5">PE1,1</text>
+                <rect x="96" y="38" width="38" height="28" rx="4" fill="#f8fafc" stroke="#6366f1"/>
+                <text x="115" y="56" text-anchor="middle" fill="#334155" font-size="9.5">PE1,2</text>
+                <rect x="144" y="38" width="38" height="28" rx="4" fill="#f8fafc" stroke="#6366f1"/>
+                <text x="163" y="56" text-anchor="middle" fill="#334155" font-size="9.5">PE1,13</text>
+
+                <rect x="0" y="76" width="38" height="28" rx="4" fill="#78350f" stroke="#fbbf24"/>
+                <text x="19" y="94" text-anchor="middle" fill="#92400e" font-size="9.5">PE11,0</text>
+                <rect x="48" y="76" width="38" height="28" rx="4" fill="#78350f" stroke="#fbbf24"/>
+                <text x="67" y="94" text-anchor="middle" fill="#92400e" font-size="9.5">PE11,1</text>
+                <rect x="96" y="76" width="38" height="28" rx="4" fill="#78350f" stroke="#fbbf24"/>
+                <text x="115" y="94" text-anchor="middle" fill="#92400e" font-size="9.5">PE11,2</text>
+                <rect x="144" y="76" width="38" height="28" rx="4" fill="#78350f" stroke="#fbbf24"/>
+                <text x="163" y="94" text-anchor="middle" fill="#92400e" font-size="9.5">PE11,13</text>
+              </g>
+            </g>
+
+            <!-- Single PE Zoom-In Box -->
+            <g class="arch-node" data-comp="pe">
+              <rect x="440" y="212" width="224" height="104" rx="12" fill="${bgFor('pe')}" stroke="${strokeFor('pe')}" stroke-width="2" ${rlcHighlight}/>
+              <text x="552" y="232" text-anchor="middle" fill="#0f172a" font-size="11.5" font-weight="700">Single PE 内部三级 Spad 微架构</text>
+              <rect x="452" y="242" width="62" height="36" rx="5" fill="#f8fafc" stroke="#818cf8"/>
+              <text x="483" y="257" text-anchor="middle" fill="#3730a3" font-size="9" font-weight="600">Filter Spad</text>
+              <text x="483" y="270" text-anchor="middle" fill="#64748b" font-size="8.5">224×16b SRAM</text>
+
+              <rect x="521" y="242" width="62" height="36" rx="5" fill="#f8fafc" stroke="#34d399"/>
+              <text x="552" y="257" text-anchor="middle" fill="#065f46" font-size="9" font-weight="600">Ifmap Spad</text>
+              <text x="552" y="270" text-anchor="middle" fill="#64748b" font-size="8.5">12×16b Regs</text>
+
+              <rect x="590" y="242" width="62" height="36" rx="5" fill="#f8fafc" stroke="#fbbf24"/>
+              <text x="621" y="257" text-anchor="middle" fill="#92400e" font-size="9" font-weight="600">Psum Spad</text>
+              <text x="621" y="270" text-anchor="middle" fill="#64748b" font-size="8.5">24×16b Regs</text>
+
+              <text x="552" y="298" text-anchor="middle" fill="#0284c7" font-size="9.5" font-weight="600">Zero-Data Gating + 16-bit 2-Stage Pipelined MAC</text>
+            </g>
+
+            <!-- Animated Flow Arrows -->
+            <line x1="151" y1="130" x2="176" y2="130" stroke="#34d399" stroke-width="2" class="flow-line-active" marker-end="url(#arrow-emerald)"/>
+            <line x1="176" y1="225" x2="151" y2="225" stroke="#818cf8" stroke-width="2" class="flow-line-active" marker-end="url(#arrow-indigo)"/>
+            <line x1="308" y1="130" x2="332" y2="130" stroke="#818cf8" stroke-width="2" class="flow-line-active" marker-end="url(#arrow-indigo)"/>
+            <line x1="416" y1="120" x2="438" y2="120" stroke="#34d399" stroke-width="2" class="flow-line-active" marker-end="url(#arrow-emerald)"/>
+            <line x1="438" y1="230" x2="416" y2="230" stroke="#fbbf24" stroke-width="2" class="flow-line-active" marker-end="url(#arrow-amber)"/>
+          </svg>
+        `;
+      } else if (arch === 'shidiannao') {
+        const strokeFor = (id) => sel === id ? '#059669' : '#cbd5e1';
+        const bgFor = (id) => sel === id ? '#ecfdf5' : '#ffffff';
+        const poolBadge = sub === 'pooling_mode' ? 'Pooling CMP Mode Active' : '2D Conv MAC Mode Active';
+
+        container.innerHTML = `
+          <svg viewBox="0 0 680 340" class="w-full h-auto max-w-full select-none">
+            <defs>
+              <marker id="arrow-sdn" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#059669" />
+              </marker>
+              <marker id="arrow-sb" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#4f46e5" />
+              </marker>
+            </defs>
+
+            <!-- Left Column: Sensor + NBin (64KB) + SB (128KB) -->
+            <g class="arch-node" data-comp="sensor_nbin">
+              <rect x="16" y="20" width="165" height="145" rx="12" fill="${bgFor('sensor_nbin')}" stroke="${strokeFor('sensor_nbin')}" stroke-width="2"/>
+              <text x="98" y="44" text-anchor="middle" fill="#0f172a" font-size="11.5" font-weight="700">CMOS Sensor → NBin</text>
+              <text x="98" y="62" text-anchor="middle" fill="#059669" font-size="11" font-weight="700">NBin: 64 KB SRAM</text>
+              <rect x="30" y="74" width="137" height="48" rx="6" fill="#f8fafc" stroke="#10b981"/>
+              <text x="98" y="95" text-anchor="middle" fill="#065f46" font-size="10" font-weight="600">Input Feature Map Pixels</text>
+              <text x="98" y="111" text-anchor="middle" fill="#64748b" font-size="9">16-bit × 64 Banks (无外部DRAM)</text>
+              <text x="98" y="148" text-anchor="middle" fill="#059669" font-size="9.5" font-weight="600">点击查看近传感输入缓冲</text>
+            </g>
+
+            <g class="arch-node" data-comp="sb">
+              <rect x="16" y="180" width="165" height="140" rx="12" fill="${bgFor('sb')}" stroke="${strokeFor('sb')}" stroke-width="2"/>
+              <text x="98" y="204" text-anchor="middle" fill="#0f172a" font-size="11.5" font-weight="700">Synapse Buffer (SB)</text>
+              <text x="98" y="222" text-anchor="middle" fill="#4f46e5" font-size="11" font-weight="700">SB: 128 KB SRAM</text>
+              <rect x="30" y="232" width="137" height="48" rx="6" fill="#f8fafc" stroke="#818cf8"/>
+              <text x="98" y="252" text-anchor="middle" fill="#3730a3" font-size="10" font-weight="600">Kernel Weights Broadcast</text>
+              <text x="98" y="268" text-anchor="middle" fill="#64748b" font-size="9">+ Control Instruction Decoder</text>
+              <text x="98" y="304" text-anchor="middle" fill="#4f46e5" font-size="9.5" font-weight="600">单周期向 64 PE 广播同一权重</text>
+            </g>
+
+            <!-- Center: 8x8 2D Mesh NFU -->
+            <g class="arch-node" data-comp="nfu_mesh">
+              <rect x="210" y="20" width="265" height="215" rx="12" fill="${bgFor('nfu_mesh')}" stroke="${strokeFor('nfu_mesh')}" stroke-width="2"/>
+              <text x="342" y="44" text-anchor="middle" fill="#0f172a" font-size="12" font-weight="700">2D Mesh NFU (8 × 8 = 64 PEs)</text>
+              <text x="342" y="61" text-anchor="middle" fill="#047857" font-size="10">Output-Stationary · 邻居像素左移(←)与上移(↑) · ${poolBadge}</text>
+
+              <!-- 3x3 Visual Mesh with Shift Arrows -->
+              <g transform="translate(236, 74)">
+                <!-- Row 0 -->
+                <rect x="0" y="0" width="56" height="36" rx="6" fill="#f8fafc" stroke="#34d399" stroke-width="1.5"/>
+                <text x="28" y="16" text-anchor="middle" fill="#064e3b" font-size="9.5" font-weight="700">PE(0,0)</text>
+                <text x="28" y="29" text-anchor="middle" fill="#d97706" font-size="8.5">Acc Out00</text>
+
+                <line x1="78" y1="18" x2="58" y2="18" stroke="#34d399" stroke-width="1.8" marker-end="url(#arrow-sdn)"/>
+                <rect x="80" y="0" width="56" height="36" rx="6" fill="#f8fafc" stroke="#34d399" stroke-width="1.5"/>
+                <text x="108" y="16" text-anchor="middle" fill="#064e3b" font-size="9.5" font-weight="700">PE(0,1)</text>
+                <text x="108" y="29" text-anchor="middle" fill="#d97706" font-size="8.5">Acc Out01</text>
+
+                <line x1="158" y1="18" x2="138" y2="18" stroke="#34d399" stroke-width="1.8" marker-end="url(#arrow-sdn)"/>
+                <rect x="160" y="0" width="56" height="36" rx="6" fill="#f8fafc" stroke="#34d399" stroke-width="1.5"/>
+                <text x="188" y="16" text-anchor="middle" fill="#064e3b" font-size="9.5" font-weight="700">PE(0,7)</text>
+                <text x="188" y="29" text-anchor="middle" fill="#d97706" font-size="8.5">Acc Out07</text>
+
+                <!-- Up Shift Arrows -->
+                <line x1="28" y1="54" x2="28" y2="38" stroke="#38bdf8" stroke-width="1.8" marker-end="url(#arrow-sdn)"/>
+                <line x1="108" y1="54" x2="108" y2="38" stroke="#38bdf8" stroke-width="1.8" marker-end="url(#arrow-sdn)"/>
+                <line x1="188" y1="54" x2="188" y2="38" stroke="#38bdf8" stroke-width="1.8" marker-end="url(#arrow-sdn)"/>
+
+                <!-- Row 1 -->
+                <rect x="0" y="56" width="56" height="36" rx="6" fill="#f8fafc" stroke="#34d399" stroke-width="1.5"/>
+                <text x="28" y="72" text-anchor="middle" fill="#064e3b" font-size="9.5" font-weight="700">PE(1,0)</text>
+                <text x="28" y="85" text-anchor="middle" fill="#d97706" font-size="8.5">Acc Out10</text>
+
+                <line x1="78" y1="74" x2="58" y2="74" stroke="#34d399" stroke-width="1.8" marker-end="url(#arrow-sdn)"/>
+                <rect x="80" y="56" width="56" height="36" rx="6" fill="#f8fafc" stroke="#34d399" stroke-width="1.5"/>
+                <text x="108" y="72" text-anchor="middle" fill="#064e3b" font-size="9.5" font-weight="700">PE(1,1)</text>
+                <text x="108" y="85" text-anchor="middle" fill="#d97706" font-size="8.5">Acc Out11</text>
+
+                <line x1="158" y1="74" x2="138" y2="74" stroke="#34d399" stroke-width="1.8" marker-end="url(#arrow-sdn)"/>
+                <rect x="160" y="56" width="56" height="36" rx="6" fill="#f8fafc" stroke="#34d399" stroke-width="1.5"/>
+                <text x="188" y="72" text-anchor="middle" fill="#064e3b" font-size="9.5" font-weight="700">PE(1,7)</text>
+                <text x="188" y="85" text-anchor="middle" fill="#d97706" font-size="8.5">Acc Out17</text>
+
+                <!-- Up Shift Arrows -->
+                <line x1="28" y1="110" x2="28" y2="94" stroke="#38bdf8" stroke-width="1.8" marker-end="url(#arrow-sdn)"/>
+                <line x1="108" y1="110" x2="108" y2="94" stroke="#38bdf8" stroke-width="1.8" marker-end="url(#arrow-sdn)"/>
+                <line x1="188" y1="110" x2="188" y2="94" stroke="#38bdf8" stroke-width="1.8" marker-end="url(#arrow-sdn)"/>
+
+                <!-- Row 7 -->
+                <rect x="0" y="112" width="56" height="36" rx="6" fill="#f8fafc" stroke="#34d399" stroke-width="1.5"/>
+                <text x="28" y="128" text-anchor="middle" fill="#064e3b" font-size="9.5" font-weight="700">PE(7,0)</text>
+                <text x="28" y="141" text-anchor="middle" fill="#d97706" font-size="8.5">Acc Out70</text>
+
+                <rect x="80" y="112" width="56" height="36" rx="6" fill="#f8fafc" stroke="#34d399" stroke-width="1.5"/>
+                <text x="108" y="128" text-anchor="middle" fill="#064e3b" font-size="9.5" font-weight="700">PE(7,1)</text>
+                <text x="108" y="141" text-anchor="middle" fill="#d97706" font-size="8.5">Acc Out71</text>
+
+                <rect x="160" y="112" width="56" height="36" rx="6" fill="#f8fafc" stroke="#34d399" stroke-width="1.5"/>
+                <text x="188" y="128" text-anchor="middle" fill="#064e3b" font-size="9.5" font-weight="700">PE(7,7)</text>
+                <text x="188" y="141" text-anchor="middle" fill="#d97706" font-size="8.5">Acc Out77</text>
+              </g>
+            </g>
+
+            <!-- Bottom Center: Single PE + 1D ALU Array -->
+            <g class="arch-node" data-comp="pe_alu">
+              <rect x="210" y="248" width="265" height="72" rx="12" fill="${bgFor('pe_alu')}" stroke="${strokeFor('pe_alu')}" stroke-width="2"/>
+              <text x="342" y="270" text-anchor="middle" fill="#0f172a" font-size="11.5" font-weight="700">PE 内部 (MUL+ADD+CMP) & 1D ALU 激活阵列</text>
+              <text x="342" y="289" text-anchor="middle" fill="#065f46" font-size="9.5">PE 内置 H-FIFO / V-FIFO 移位缓存 · 尾部 ALU 执行 ReLU / Sigmoid / Tanh</text>
+              <text x="342" y="306" text-anchor="middle" fill="#0284c7" font-size="9.5" font-weight="600">点击查看 PE 内部寄存器与池化比较器结构</text>
+            </g>
+
+            <!-- Right Column: NBout (64KB) -->
+            <g class="arch-node" data-comp="nbout">
+              <rect x="502" y="20" width="162" height="300" rx="12" fill="${bgFor('nbout')}" stroke="${strokeFor('nbout')}" stroke-width="2"/>
+              <text x="583" y="52" text-anchor="middle" fill="#0f172a" font-size="12" font-weight="700">NBout Buffer</text>
+              <text x="583" y="70" text-anchor="middle" fill="#d97706" font-size="11" font-weight="700">64 KB SRAM</text>
+              <rect x="516" y="92" width="134" height="80" rx="8" fill="#f8fafc" stroke="#fbbf24"/>
+              <text x="583" y="118" text-anchor="middle" fill="#92400e" font-size="10.5" font-weight="600">Output Neurons</text>
+              <text x="583" y="136" text-anchor="middle" fill="#334155" font-size="9.5">存储激活后的输出特征图</text>
+              <text x="583" y="154" text-anchor="middle" fill="#64748b" font-size="9">或暂存多通道中间部分和</text>
+
+              <rect x="516" y="190" width="134" height="75" rx="8" fill="#f8fafc" stroke="#34d399"/>
+              <text x="583" y="216" text-anchor="middle" fill="#065f46" font-size="10" font-weight="600">Ping-Pong Loopback</text>
+              <text x="583" y="234" text-anchor="middle" fill="#334155" font-size="9">直接回环供下一层使用</text>
+              <text x="583" y="250" text-anchor="middle" fill="#059669" font-size="9" font-weight="600">0 Off-Chip Memory Access</text>
+              <text x="583" y="298" text-anchor="middle" fill="#d97706" font-size="9.5" font-weight="600">点击查看输出缓冲闭环</text>
+            </g>
+
+            <!-- Flow Lines -->
+            <line x1="181" y1="90" x2="208" y2="90" stroke="#34d399" stroke-width="2" class="flow-line-active" marker-end="url(#arrow-sdn)"/>
+            <line x1="181" y1="215" x2="208" y2="180" stroke="#818cf8" stroke-width="2" class="flow-line-active" marker-end="url(#arrow-sb)"/>
+            <line x1="475" y1="280" x2="500" y2="280" stroke="#34d399" stroke-width="2" class="flow-line-active" marker-end="url(#arrow-sdn)"/>
+          </svg>
+        `;
+      } else {
+        // NVDLA
+        const strokeFor = (id) => sel === id ? '#d97706' : '#cbd5e1';
+        const bgFor = (id) => sel === id ? '#fffbeb' : '#ffffff';
+        const isFused = sub === 'fused';
+
+        container.innerHTML = `
+          <svg viewBox="0 0 680 340" class="w-full h-auto max-w-full select-none">
+            <defs>
+              <marker id="arrow-nvdla" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#d97706" />
+              </marker>
+              <marker id="arrow-mem" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#0284c7" />
+              </marker>
+            </defs>
+
+            <!-- Top Row: Convolution Core (CDMA -> CBUF -> CSC -> CMAC -> CACC) -->
+            <g class="arch-node" data-comp="conv_core">
+              <rect x="16" y="16" width="648" height="118" rx="12" fill="${bgFor('conv_core')}" stroke="${strokeFor('conv_core')}" stroke-width="2"/>
+              <text x="34" y="38" fill="#92400e" font-size="12" font-weight="700">1. Convolution Core (NVDLA 卷积核心五级流水线 · Direct / Image-Input / Winograd / Batching)</text>
+              <text x="646" y="38" text-anchor="end" fill="#64748b" font-size="10">Atomic-C × Atomic-K MACs</text>
+
+              <!-- 5 Sub-blocks inside CONV Core -->
+              <rect x="30" y="50" width="108" height="68" rx="8" fill="#f8fafc" stroke="#f59e0b"/>
+              <text x="84" y="73" text-anchor="middle" fill="#78350f" font-size="11" font-weight="700">CDMA</text>
+              <text x="84" y="89" text-anchor="middle" fill="#334155" font-size="9">权重/特征预取</text>
+              <text x="84" y="104" text-anchor="middle" fill="#059669" font-size="8.5">稀疏零值解压</text>
+
+              <rect x="156" y="50" width="112" height="68" rx="8" fill="#f8fafc" stroke="#f59e0b"/>
+              <text x="212" y="73" text-anchor="middle" fill="#78350f" font-size="11" font-weight="700">CBUF</text>
+              <text x="212" y="89" text-anchor="middle" fill="#334155" font-size="9">2–32 Banks SRAM</text>
+              <text x="212" y="104" text-anchor="middle" fill="#64748b" font-size="8.5">4-Port 共享缓存</text>
+
+              <rect x="286" y="50" width="108" height="68" rx="8" fill="#f8fafc" stroke="#f59e0b"/>
+              <text x="340" y="73" text-anchor="middle" fill="#78350f" font-size="11" font-weight="700">CSC</text>
+              <text x="340" y="89" text-anchor="middle" fill="#334155" font-size="9">序列控制器</text>
+              <text x="340" y="104" text-anchor="middle" fill="#0284c7" font-size="8.5">Winograd PRA</text>
+
+              <rect x="412" y="50" width="116" height="68" rx="8" fill="#f8fafc" stroke="#f59e0b"/>
+              <text x="470" y="73" text-anchor="middle" fill="#78350f" font-size="11" font-weight="700">CMAC</text>
+              <text x="470" y="89" text-anchor="middle" fill="#334155" font-size="9">2D MAC 阵列</text>
+              <text x="470" y="104" text-anchor="middle" fill="#d97706" font-size="8.5">64 ~ 1024 MACs</text>
+
+              <rect x="546" y="50" width="102" height="68" rx="8" fill="#f8fafc" stroke="#f59e0b"/>
+              <text x="597" y="73" text-anchor="middle" fill="#78350f" font-size="11" font-weight="700">CACC</text>
+              <text x="597" y="89" text-anchor="middle" fill="#334155" font-size="9">高精度累加器</text>
+              <text x="597" y="104" text-anchor="middle" fill="#64748b" font-size="8.5">截断与饱和转换</text>
+            </g>
+
+            <!-- Middle Row: SDP -> PDP -> CDP -->
+            <g class="arch-node" data-comp="sdp">
+              <rect x="16" y="152" width="205" height="92" rx="12" fill="${bgFor('sdp')}" stroke="${strokeFor('sdp')}" stroke-width="2"/>
+              <text x="118" y="176" text-anchor="middle" fill="#0f172a" font-size="11.5" font-weight="700">2. SDP (单数据点处理器)</text>
+              <text x="118" y="195" text-anchor="middle" fill="#92400e" font-size="9.5">BatchNorm · Bias · Scaling</text>
+              <text x="118" y="212" text-anchor="middle" fill="#059669" font-size="9.5">ReLU / PReLU / LUT (Sigmoid,Tanh)</text>
+              <text x="118" y="230" text-anchor="middle" fill="#64748b" font-size="8.5">Throughput: 1~16 Features/Cycle</text>
+            </g>
+
+            <g class="arch-node" data-comp="pdp">
+              <rect x="242" y="152" width="196" height="92" rx="12" fill="${bgFor('pdp')}" stroke="${strokeFor('pdp')}" stroke-width="2"/>
+              <text x="340" y="176" text-anchor="middle" fill="#0f172a" font-size="11.5" font-weight="700">3. PDP (平面池化处理器)</text>
+              <text x="340" y="195" text-anchor="middle" fill="#0284c7" font-size="9.5">Spatial Max / Min / Avg Pooling</text>
+              <text x="340" y="212" text-anchor="middle" fill="#334155" font-size="9.5">内置跨行缓冲 Line Buffer</text>
+              <text x="340" y="230" text-anchor="middle" fill="#64748b" font-size="8.5">Fused FIFO 或 PDP-RDMA/WDMA</text>
+            </g>
+
+            <g class="arch-node" data-comp="cdp">
+              <rect x="459" y="152" width="205" height="92" rx="12" fill="${bgFor('cdp')}" stroke="${strokeFor('cdp')}" stroke-width="2"/>
+              <text x="561" y="176" text-anchor="middle" fill="#0f172a" font-size="11.5" font-weight="700">4. CDP (跨通道处理器)</text>
+              <text x="561" y="195" text-anchor="middle" fill="#3730a3" font-size="9.5">Cross-Channel LRN 归一化</text>
+              <text x="561" y="212" text-anchor="middle" fill="#334155" font-size="9.5">跨通道平方和 + LUT 指数逼近</text>
+              <text x="561" y="230" text-anchor="middle" fill="#64748b" font-size="8.5">独立 CDP-RDMA / CDP-WDMA</text>
+            </g>
+
+            <!-- Bottom Row: RUBIK + BDMA + Memory Fabric (DBBIF / SRAMIF / CSB) -->
+            <g class="arch-node" data-comp="rubik_bdma">
+              <rect x="16" y="260" width="648" height="64" rx="12" fill="${bgFor('rubik_bdma')}" stroke="${strokeFor('rubik_bdma')}" stroke-width="2"/>
+              <text x="34" y="284" fill="#0284c7" font-size="11.5" font-weight="700">5. Memory, Reshape & Control Subsystem:</text>
+              <text x="34" y="306" fill="#334155" font-size="10">
+                <tspan fill="#92400e" font-weight="700">RUBIK</tspan> (Contract反卷积 / Split / Merge) ·
+                <tspan fill="#059669" font-weight="700">BDMA</tspan> (DRAM↔SRAM 桥接拷贝) ·
+                <tspan fill="#0284c7" font-weight="700">DBBIF</tspan> (AXI4 主存) ·
+                <tspan fill="#065f46" font-weight="700">SRAMIF</tspan> (二级高速SRAM) ·
+                <tspan fill="#3730a3" font-weight="700">CSB + IRQ</tspan>
+              </text>
+            </g>
+
+            <!-- Fused vs Independent Flow Lines -->
+            ${isFused ? `
+              <!-- Fused Direct FIFO Arrows: CACC -> SDP -> PDP -->
+              <path d="M 597 118 L 597 142 L 118 142 L 118 152" fill="none" stroke="#fbbf24" stroke-width="2.5" class="flow-line-active" marker-end="url(#arrow-nvdla)"/>
+              <line x1="221" y1="198" x2="240" y2="198" stroke="#fbbf24" stroke-width="2.5" class="flow-line-active" marker-end="url(#arrow-nvdla)"/>
+              <line x1="340" y1="244" x2="340" y2="258" stroke="#38bdf8" stroke-width="2" class="flow-line-active" marker-end="url(#arrow-mem)"/>
+            ` : `
+              <!-- Independent Mode Memory-to-Memory Arrows -->
+              <line x1="118" y1="244" x2="118" y2="258" stroke="#38bdf8" stroke-width="2" class="flow-line-active" marker-end="url(#arrow-mem)"/>
+              <line x1="340" y1="244" x2="340" y2="258" stroke="#38bdf8" stroke-width="2" class="flow-line-active" marker-end="url(#arrow-mem)"/>
+              <line x1="561" y1="244" x2="561" y2="258" stroke="#38bdf8" stroke-width="2" class="flow-line-active" marker-end="url(#arrow-mem)"/>
+            `}
+          </svg>
+        `;
+      }
+
+      // Attach click handlers to all .arch-node elements inside the SVG
+      container.querySelectorAll('.arch-node').forEach((node) => {
+        node.addEventListener('click', () => {
+          const compId = node.getAttribute('data-comp');
+          if (compId) {
+            state.selectedComp = compId;
+            updateExplorerUI();
+          }
+        });
+      });
+    }
+
+    // ============================================================================
+    // 4. UPDATE EXPLORER UI (Cards, Submodes, Inspector, Quick Pills, Simulator)
+    // ============================================================================
+    function updateExplorerUI() {
+      const archObj = ARCH_DATA[state.currentArch];
+
+      // 1. Update top 3 Architecture Cards styling
+      document.querySelectorAll('.arch-select-card').forEach((btn) => {
+        const a = btn.getAttribute('data-arch');
+        if (a === state.currentArch) {
+          const borderMap = {
+            eyeriss: 'border-indigo-500 shadow-lg shadow-indigo-500/10 bg-white shadow-sm',
+            shidiannao: 'border-emerald-500 shadow-lg shadow-emerald-500/10 bg-white shadow-sm',
+            nvdla: 'border-amber-500 shadow-lg shadow-amber-500/10 bg-white shadow-sm'
+          };
+          btn.className = `arch-select-card text-left p-4 rounded-2xl border-2 transition-all ${borderMap[a]}`;
+        } else {
+          btn.className = 'arch-select-card text-left p-4 rounded-2xl border-2 transition-all bg-slate-50/80 border-slate-200 hover:border-slate-300';
+        }
+      });
+
+      // 2. Update Diagram Header & Submode Toggle Buttons
+      document.getElementById('diagram-badge').textContent = archObj.badge;
+      document.getElementById('diagram-title').textContent = archObj.title;
+      document.getElementById('arch-paper-link').href = archObj.paperUrl;
+
+      const submodeBar = document.getElementById('arch-submode-bar');
+      submodeBar.innerHTML = archObj.submodes.map((m) => {
+        const active = m.id === state.currentSubmode;
+        return `<button type="button" data-submode="${m.id}" class="submode-btn px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${active ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-900'}">${m.label}</button>`;
+      }).join('');
+
+      submodeBar.querySelectorAll('.submode-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.currentSubmode = btn.getAttribute('data-submode');
+          updateExplorerUI();
+        });
+      });
+
+      // 3. Render Quick Component Pills
+      const pillsContainer = document.getElementById('component-quick-pills');
+      pillsContainer.innerHTML = Object.entries(archObj.components).map(([cid, cobj]) => {
+        const active = cid === state.selectedComp;
+        const shortName = cobj.name.split('(')[0].trim();
+        return `<button type="button" data-comp-pill="${cid}" class="comp-pill-btn px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${active ? 'bg-indigo-500/20 border-indigo-400 text-indigo-800' : 'bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-800'}">${shortName}</button>`;
+      }).join('');
+
+      pillsContainer.querySelectorAll('.comp-pill-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.selectedComp = btn.getAttribute('data-comp-pill');
+          updateExplorerUI();
+        });
+      });
+
+      // 4. Render SVG Diagram
+      renderArchSvg();
+
+      // 5. Update Right-hand Module Inspector
+      const comp = archObj.components[state.selectedComp] || archObj.components[archObj.defaultComponent];
+      document.getElementById('inspector-title').textContent = comp.name;
+      document.getElementById('inspector-tag').textContent = comp.tag;
+      document.getElementById('inspector-desc').textContent = comp.desc;
+      document.getElementById('inspector-formula').textContent = comp.formula;
+      document.getElementById('inspector-insight-title').textContent = comp.insightTitle;
+      document.getElementById('inspector-insight-text').textContent = comp.insightText;
+
+      document.getElementById('inspector-specs').innerHTML = comp.specs.map((s) => `
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5">
+          <div class="text-[11px] text-slate-500">${s.k}</div>
+          <div class="text-xs sm:text-sm font-bold text-slate-900 mono mt-0.5">${s.v}</div>
+        </div>
+      `).join('');
+
+      document.getElementById('inspector-bullets').innerHTML = comp.bullets.map((b) => `
+        <li class="flex items-start gap-2">
+          <span class="text-indigo-600 font-bold mt-0.5">•</span>
+          <span>${b}</span>
+        </li>
+      `).join('');
+
+      // 6. Update Simulator Section
+      renderSimulatorStep();
+    }
+
+    // ============================================================================
+    // 5. CYCLE-BY-CYCLE SIMULATOR RENDERER
+    // ============================================================================
+    function renderSimulatorStep() {
+      const archObj = ARCH_DATA[state.currentArch];
+      const step = archObj.simSteps[state.simCycle] || archObj.simSteps[0];
+
+      const simHeaderMap = {
+        eyeriss: {
+          title: 'Eyeriss Row-Stationary (行驻留) 周期级数据流交互仿真',
+          subtitle: '观察卷积核权重行 (Filter Row) 水平共享、输入特征图行 (Ifmap Row) 对角多播与部分和 (Psum) 垂直累加',
+          caption: '3×3 卷积映射到 3×3 逻辑 PE 子阵列 (Row-Stationary)',
+          m1: 'Filter 权重行本地 Spad 复用率',
+          m2: 'Ifmap 特征图对角多播共享效率',
+          m3: 'Psum 部分和片上 LN 垂直规约率'
+        },
+        shidiannao: {
+          title: 'ShiDianNao Output-Stationary (输出驻留) 2D 网格移位仿真',
+          subtitle: '观察全片上 SB 单周期广播权重，以及 8×8 网格 PE 通过左移 (Right→Left) 与上移 (Down→Up) 共享二维像素',
+          caption: '8×8 2D Mesh NFU 子阵列 (每个 PE 原地驻留 1 个输出像素)',
+          m1: 'SB 权重全局广播复用率 (64 PEs 共享)',
+          m2: '2D 网格邻居移位率 (免 NBin 重读)',
+          m3: 'Output Partial Sum 原地驻留率'
+        },
+        nvdla: {
+          title: 'NVDLA 五级卷积核与 Fused 融合流水线周期仿真',
+          subtitle: '观察 CDMA → CBUF → CSC → CMAC → CACC → SDP → PDP 跨引擎直通流水与 Ping-Pong 寄存器切换',
+          caption: 'NVDLA 核心计算与后处理硬件流水线矩阵',
+          m1: '稀疏压缩与 CBUF 权重/特征命中率',
+          m2: 'Atomic-C × Atomic-K 阵列有效吞吐率',
+          m3: 'Fused FIFO 免 DRAM 往返节省率'
+        }
+      };
+
+      const labels = simHeaderMap[state.currentArch];
+      document.getElementById('sim-title').textContent = labels.title;
+      document.getElementById('sim-subtitle').textContent = labels.subtitle;
+      document.getElementById('sim-grid-caption').textContent = labels.caption;
+      document.getElementById('metric-label-1').textContent = labels.m1;
+      document.getElementById('metric-label-2').textContent = labels.m2;
+      document.getElementById('metric-label-3').textContent = labels.m3;
+
+      document.getElementById('sim-cycle-num').textContent = String(state.simCycle);
+      document.getElementById('sim-step-badge').textContent = `Step ${state.simCycle + 1} of 6`;
+      document.getElementById('sim-step-title').textContent = step.title;
+      document.getElementById('sim-step-desc').textContent = step.desc;
+
+      // Update metric bars
+      const [v1, v2, v3] = step.metrics;
+      document.getElementById('metric-val-1').textContent = `${v1}%`;
+      document.getElementById('metric-bar-1').style.width = `${v1}%`;
+      document.getElementById('metric-val-2').textContent = `${v2}%`;
+      document.getElementById('metric-bar-2').style.width = `${v2}%`;
+      document.getElementById('metric-val-3').textContent = `${v3}%`;
+      document.getElementById('metric-bar-3').style.width = `${v3}%`;
+
+      // Render 3x3 cells
+      const stateStyleMap = {
+        weight: 'border-indigo-500/70 bg-indigo-50/80',
+        ifmap: 'border-emerald-500/70 bg-emerald-50/80',
+        psum: 'border-amber-500/80 bg-amber-50/80',
+        compute: 'border-cyan-400/80 bg-sky-50/90 shadow-md shadow-cyan-500/10'
+      };
+
+      const gridEl = document.getElementById('sim-array-grid');
+      gridEl.innerHTML = step.cells.map((cell, idx) => {
+        const cls = stateStyleMap[cell.state] || stateStyleMap.weight;
+        const unitLabel = state.currentArch === 'nvdla'
+          ? `Stage ${idx + 1}`
+          : `PE(${cell.r}, ${cell.c})`;
+
+        return `
+          <div class="pe-cell rounded-xl border p-2.5 flex flex-col justify-between ${cls}">
+            <div class="flex items-center justify-between text-[11px] text-slate-500 mono mb-1">
+              <span class="font-bold text-slate-800">${unitLabel}</span>
+              <span class="px-1.5 py-0.2 rounded bg-white shadow-sm text-[10px] text-indigo-700">${cell.w}</span>
+            </div>
+            <div class="text-xs font-semibold text-emerald-700 mono truncate">${cell.i}</div>
+            <div class="text-xs font-bold text-amber-700 mono mt-1 pt-1 border-t border-slate-200 flex items-center justify-between">
+              <span class="text-[10px] text-slate-500 font-sans">Out:</span>
+              <span>${cell.p}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function stopSimPlayback() {
+      if (state.simTimer) {
+        clearInterval(state.simTimer);
+        state.simTimer = null;
+      }
+      state.simPlaying = false;
+      document.getElementById('sim-play-icon').textContent = '▶';
+      document.getElementById('sim-play-label').textContent = '自动播放';
+    }
+
+    function toggleSimPlayback() {
+      if (state.simPlaying) {
+        stopSimPlayback();
+      } else {
+        state.simPlaying = true;
+        document.getElementById('sim-play-icon').textContent = '⏸';
+        document.getElementById('sim-play-label').textContent = '暂停仿真';
+        state.simTimer = setInterval(() => {
+          state.simCycle = (state.simCycle + 1) % 6;
+          renderSimulatorStep();
+        }, 1800);
+      }
+    }
+
+    // ============================================================================
+    // 6. WORKLOAD MAPPER & RADAR CHART (VIEW 2)
+    // ============================================================================
+    function updateWorkloadMapper() {
+      const { cin, kout, kernel } = state.workload;
+      document.getElementById('val-cin').textContent = String(cin);
+      document.getElementById('val-kout').textContent = String(kout);
+      document.getElementById('val-kernel').textContent = `${kernel}×${kernel}`;
+
+      // 1. Eyeriss 12x14 (168 PEs) mapping calculation
+      const eyerissRowSets = Math.floor(12 / Math.min(kernel, 12));
+      const usedRows = Math.min(12, kernel * Math.max(1, eyerissRowSets));
+      const eyerissUtil = Math.min(98.5, ((usedRows / 12) * 0.94 * 100));
+      document.getElementById('calc-eyeriss-util').textContent = `${eyerissUtil.toFixed(1)}%`;
+      document.getElementById('calc-eyeriss-note').textContent =
+        kernel === 1
+          ? `1×1 点卷积下每行 PE 可并行映射多组输入通道 (C=${cin}) 与卷积核 (K=${kout})，配合 RLC 压缩减少片外传输。`
+          : `${kernel}×${kernel} 卷积核按行映射到 12×14 PE 阵列 (${usedRows}/12 行激活)，同行共享权重、斜向共享特征图。`;
+
+      // 2. ShiDianNao 8x8 (64 PEs) Output-Stationary calculation
+      const sdnUtil = kout >= 8 ? 100.0 : (kout / 8) * 100;
+      document.getElementById('calc-shidiannao-util').textContent = `${sdnUtil.toFixed(1)}%`;
+      document.getElementById('calc-shidiannao-note').textContent =
+        `64 个 PE 固定对应输出特征图上的 8×8 像素窗口，SB 在 ${kernel * kernel * cin} 个周期内顺序广播权重，实现片外零访存。`;
+
+      // 3. NVDLA Large (Atomic-C=64, Atomic-K=16) utilization calculation
+      const atomicC = 64;
+      const atomicK = 16;
+      const cRatio = cin < atomicC ? (cin <= 4 ? 0.485 : cin / atomicC) : (cin / (Math.ceil(cin / atomicC) * atomicC));
+      const kRatio = kout / (Math.ceil(kout / atomicK) * atomicK);
+      const nvdlaUtil = Math.min(100, cRatio * kRatio * 100);
+      document.getElementById('calc-nvdla-util').textContent = `${nvdlaUtil.toFixed(1)}%`;
+      document.getElementById('calc-nvdla-note').textContent =
+        cin <= 4
+          ? `首层输入通道 C=${cin} 远小于 Atomic-C (64)，NVDLA 硬件自动启用 Image-Input 通道扩展模式将利用率维持在 ~48.5%。`
+          : (kernel === 3
+            ? `3×3 卷积完美匹配 NVDLA Winograd 硬件加速模式，算术乘法次数减少 2.25×，Atomic-C/K 阵列利用率达 ${nvdlaUtil.toFixed(1)}%。`
+            : `输入通道 C=${cin} 与输出核 K=${kout} 按 Atomic-C=64 × Atomic-K=16 切块流水执行。`);
+    }
+
+    function initRadarChart() {
+      const canvas = document.getElementById('radarChart');
+      if (!canvas || typeof Chart === 'undefined') return;
+      if (radarChartInstance) {
+        radarChartInstance.destroy();
+      }
+      radarChartInstance = new Chart(canvas, {
+        type: 'radar',
+        data: {
+          labels: [
+            '卷积局部数据复用 (Spatial Reuse)',
+            '片外 DRAM 带宽节省 (DRAM Saving)',
+            '多尺寸卷积映射灵活性 (Flexibility)',
+            '算子全流程覆盖度 (CONV/SDP/PDP/CDP)',
+            '工业级可配置扩展性 (Scalability)'
+          ],
+          datasets: [
+            {
+              label: 'Eyeriss (MIT)',
+              data: [96, 88, 92, 72, 80],
+              backgroundColor: 'rgba(99, 102, 241, 0.22)',
+              borderColor: '#818cf8',
+              pointBackgroundColor: '#818cf8',
+              borderWidth: 2
+            },
+            {
+              label: 'ShiDianNao (ICT CAS)',
+              data: [90, 99, 74, 82, 70],
+              backgroundColor: 'rgba(16, 185, 129, 0.22)',
+              borderColor: '#34d399',
+              pointBackgroundColor: '#34d399',
+              borderWidth: 2
+            },
+            {
+              label: 'NVDLA (NVIDIA)',
+              data: [85, 86, 90, 98, 99],
+              backgroundColor: 'rgba(245, 158, 11, 0.22)',
+              borderColor: '#fbbf24',
+              pointBackgroundColor: '#fbbf24',
+              borderWidth: 2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            r: {
+              min: 50,
+              max: 100,
+              ticks: {
+                stepSize: 10,
+                color: '#475569',
+                backdropColor: 'transparent',
+                font: { size: 10 }
+              },
+              grid: { color: 'rgba(148, 163, 184, 0.18)' },
+              angleLines: { color: 'rgba(148, 163, 184, 0.18)' },
+              pointLabels: {
+                color: '#1e293b',
+                font: { size: 11, family: 'Inter' }
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#334155', font: { size: 11 } }
+            }
+          }
+        }
+      });
+    }
+
+    // ============================================================================
+    // 6B. TRANSFORMER OPERATOR MAPPING KNOWLEDGE BASE & LOGIC (VIEW 3)
+    // ============================================================================
+    const TF_OPS_DATA = {
+      qkv_proj: {
+        title: 'Stage 1: Q / K / V 线性投影 (Y = X · W_QKV)',
+        formula: 'Y [L, 3D] = X [L, D] × W_QKV [D, 3D]  ⇔  1×1 Pointwise Conv (R=1, S=1, C=D, K=3D)',
+        nature: 'Prefill: 计算密集型 (GEMM) · Decode: 权重带宽受限 (GEMV)',
+        desc: 'Transformer 中占比极高的静态权重线性变换。在 CNN 加速器中，通常将序列长度 L 映射为特征图空间宽高 (W×H = L) 或 Batch 维度，将隐藏维度 D 映射为输入/输出通道数 (C=D, K=D)，从而作为 1×1 逐点卷积执行。',
+        archs: {
+          eyeriss: {
+            status: '需变通 (退化为 1×1 映射)',
+            statusColor: 'bg-amber-500/20 text-amber-700 border-amber-500/30',
+            mapping: '映射为 R=1, S=1 的 1D 行卷积，令序列 Token 作为 Ifmap 水平流过 PE',
+            bottleneck: '当 R=S=1 时，Eyeriss 标志性的对角线滑动窗口复用完全失效！第一代 GIN 总线带宽难以同时喂饱 168 个 PE（这也促使 Eyeriss v2 改用 Hierarchical Mesh 与 RS+ 数据流）。',
+            rlcImpact: 'ReLU 后的高稀疏率不复存在（Transformer 输入含正负激活），Zero-Data Gating 与 5-bit RLC 压缩收益大幅下降。'
+          },
+          shidiannao: {
+            status: '严重受限 (片上 SB 溢出)',
+            statusColor: 'bg-rose-500/20 text-rose-700 border-rose-500/30',
+            mapping: '8×8 PE 网格驻留 64 个输出特征，SB 逐拍广播权重',
+            bottleneck: '2D 网格的左移 (←) 与上移 (↑) 专为重叠卷积窗口设计，在 1×1 矩阵乘中毫无用武之地；更致命的是 SB 仅 128 KB，连单层 QKV 权重 (如 D=768 需 3.5 MB) 的 1/25 都装不下！',
+            rlcImpact: '无外部高带宽 DRAM 控制器，必须依赖外部主控分几十次极其缓慢地重写片上 SRAM。'
+          },
+          nvdla: {
+            status: '原生高效支持 (1×1 Direct Conv)',
+            statusColor: 'bg-emerald-500/20 text-emerald-700 border-emerald-500/30',
+            mapping: 'CDMA 预取权重至 CBUF，CMAC 按 Atomic-C × Atomic-K 满载执行 1×1 Direct Convolution',
+            bottleneck: 'Transformer 的隐藏维度 D (512/768/1024) 天然是 Atomic-C (64) 与 Atomic-K (16) 的整数倍，Prefill 阶段 CMAC 利用率接近 100%！但 Winograd 模块因仅支持 3×3 卷积而处于闲置状态。',
+            rlcImpact: '若对 Transformer 权重做结构化/非结构化剪枝，NVDLA 的稀疏权重压缩 (Sparse Weight Compression) 依然能节省约 30%~50% 访存带宽。'
+          }
+        }
+      },
+      qk_matmul: {
+        title: 'Stage 2: Self-Attention 动态注意力打分 (S = Q · Kᵀ / √d_k)',
+        formula: 'S [H, L, L] = Q [H, L, d_k] × Kᵀ [H, d_k, L]  (双动态激活张量相乘，无静态权重)',
+        nature: '双动态操作数 · O(L²) 复杂度 · 无跨样本权重复用',
+        desc: '与传统 CNN 最大的分水岭：相乘的两个矩阵 Q 和 K 都是当前推理动态生成的激活值，而非离线训练固定的权重！且每换一个 Attention Head 或输入序列，K 矩阵全部改变。',
+        archs: {
+          eyeriss: {
+            status: '硬件低效 (需伪装成动态权重)',
+            statusColor: 'bg-rose-500/20 text-rose-700 border-rose-500/30',
+            mapping: '被迫将动态张量 K 当作“临时卷积核权重”写入 GLB 与各 PE 的 224×16b Filter Spad，再流式送入 Q',
+            bottleneck: 'Eyeriss 假设权重装入 Filter Spad 后可被成百上千次复用；但 Attention 中每个 Head 的 K 矩阵截然不同，频繁刷新 168 个 PE 的 Filter Spad 导致高昂的 GIN 传输开销。',
+            rlcImpact: 'Q 与 K 均为稠密浮点/定点向量，几乎没有连续零游程，RLC 编解码器反而可能因非零开销降低有效位宽。'
+          },
+          shidiannao: {
+            status: '架构不兼容 (SB 非动态激活端口)',
+            statusColor: 'bg-rose-500/20 text-rose-700 border-rose-500/30',
+            mapping: '需将 NBout 生成的 K 矩阵搬移拷贝至突触权重缓冲区 SB (128 KB)，再向 8×8 PE 广播',
+            bottleneck: 'ShiDianNao 硬件数据通路中 NBout 只回环至 NBin，没有 NBout → SB 的高速直连内部总线；且序列长度 L 稍大时 L×L 注意力矩阵即撑爆 64 KB NBout。',
+            rlcImpact: '16-bit 固定截断定点乘法器在未做动态缩放时容易在 Q·Kᵀ 点积中发生溢出或精度损失。'
+          },
+          nvdla: {
+            status: '需驱动层变通 (MatMul-as-Conv)',
+            statusColor: 'bg-amber-500/20 text-amber-700 border-amber-500/30',
+            mapping: '软件先将前一阶段算出的 K 写回 SRAMIF/DRAM，再由 CDMA 伪装成“未压缩权重”通过 Weight Port 读入 CBUF',
+            bottleneck: 'NVDLA 的 Fused 流水线只能将 CACC 输出传给 SDP，无法直接把激活张量回环变成 CMAC 的权重端口，因此必须经过一次内存读写往返 (Memory Round-Trip)。',
+            rlcImpact: '缩放因子 1/√d_k 可顺便融合在紧随其后的 SDP 线性缩放 (Precision/Linear Scaling) 流水级中免费完成！'
+          }
+        }
+      },
+      softmax: {
+        title: 'Stage 3: Row-Wise Softmax 归一化 (P_ij = exp(S_ij - m_i) / ∑ exp)',
+        formula: 'Three-Pass Row Reduction: ① m_i = max_j(S_ij)  →  ② u_ij = exp(S_ij - m_i), l_i = ∑_j u_ij  →  ③ P_ij = u_ij / l_i',
+        nature: '非线性超越函数 + 跨整行 (Length L) 全局归约依赖',
+        desc: '需要对注意力矩阵的每一行 (长度为 L) 进行三次遍历或在线归约：求全行最大值防溢出、逐元素求自然指数 exp(x) 并累加全行分母、最后逐元素相除。',
+        archs: {
+          eyeriss: {
+            status: '不支持 (需回退 Host CPU)',
+            statusColor: 'bg-rose-500/20 text-rose-700 border-rose-500/30',
+            mapping: 'Eyeriss 片上仅集成硬件 ReLU 门控，无指数运算器、无除法器、无跨行 Max 树',
+            bottleneck: '必须将 L×L 的注意力得分矩阵从 GLB 写出到片外 DRAM，由主控 CPU 计算完 Softmax 后再重新读回 GLB，造成严重的流水线停顿与片外访存尖峰。',
+            rlcImpact: 'Softmax 输出为 (0,1) 之间的概率分布，虽然大量注意力权重接近 0，但除非设定硬阈值截断 (Sparse Attention)，否则并非严格等于 0。'
+          },
+          shidiannao: {
+            status: '部分原语可用但无法闭环',
+            statusColor: 'bg-rose-500/20 text-rose-700 border-rose-500/30',
+            mapping: 'PE 内置 Max 比较器与加法器可辅助求行最大值与行累加，尾部 1D ALU 可分段逼近 exp(x)',
+            bottleneck: '虽然具备比较器、加法器和 1D 非线性 ALU，但微指令控制器仅针对固定窗口 (如 2×2/3×3) 的局部池化设计，缺乏可变长序列 L 的三遍扫描与倒数相乘数据通路。',
+            rlcImpact: '分段线性逼近在输入动态范围较大时对 exp(x - max) 的尾部精度保持能力有限。'
+          },
+          nvdla: {
+            status: '多阶段组合或 CPU/DSP 协同',
+            statusColor: 'bg-amber-500/20 text-amber-700 border-amber-500/30',
+            mapping: '可利用 PDP 求局部 Max、SDP 的双级查找表 (LUT) 计算 exp(x)，但长序列归约与除法需多次遍历或交由协处理器',
+            bottleneck: 'NVDLA 的 CDP 虽有平方和与 LUT 归一化，但窗口仅限跨通道 1~9；对于序列长度 L=512~4096 的 Softmax，通常需通过 SRAMIF 多遍调用 SDP/PDP 或由 SoC 上的 DSP/CPU 协同完成。',
+            rlcImpact: '二级高速缓存接口 SRAMIF 可大幅缓解 Softmax 多遍扫描时的片外 DRAM 带宽压力。'
+          }
+        }
+      },
+      pv_matmul: {
+        title: 'Stage 4: 注意力上下文聚合 (O = P · V) 与自回归 KV Cache',
+        formula: 'O [H, L, d_k] = P [H, L, L] × V [H, L, d_k]  (Decode 阶段 L_q = 1, 需读取全部历史 K/V Cache)',
+        nature: 'Decode 阶段典型 Memory-Wall (算术强度极低 ≈ 1 OP/Byte)',
+        desc: '将 Softmax 后的注意力概率矩阵 P 与动态值矩阵 V 相乘。在 LLM 自回归生成 (Decode) 阶段，每次仅生成 1 个新 Token，却要从内存读取全部历史 Token 的 K 和 V 缓存。',
+        archs: {
+          eyeriss: {
+            status: 'Decode 阶段利用率极低',
+            statusColor: 'bg-rose-500/20 text-rose-700 border-rose-500/30',
+            mapping: '将历史 V 矩阵分块载入 PE Filter Spad，单 Token 注意力向量 P 作为单元素流过 Ifmap Spad',
+            bottleneck: 'Decode 阶段每次仅 1 个查询向量，完全无法在多个 Token 间摊销加载 V 矩阵到 Filter Spad 的能耗，168 个 PE 绝大多数时间在等待片外 DRAM 传输 KV Cache。',
+            rlcImpact: '若采用门控稀疏注意力 (Pruning small P_ij to 0)，Eyeriss 的 Zero-Data Gating 可跳过概率为 0 的 Token 乘加！'
+          },
+          shidiannao: {
+            status: '无法容纳 KV Cache',
+            statusColor: 'bg-rose-500/20 text-rose-700 border-rose-500/30',
+            mapping: '64 KB NBin / NBout 完全无法保存长上下文历史 KV 状态',
+            bottleneck: '在 L=512, D=768, 12 层网络下，KV Cache 高达 18 MB，超过 ShiDianNao 全部片上存储 (256 KB) 的 70 倍以上，近传感全片上架构无法独立完成自回归解码。',
+            rlcImpact: '凸显了近传感全片上 SRAM 架构仅适用于无状态、小尺寸帧级视觉 CNN，而不适合有状态长序列生成。'
+          },
+          nvdla: {
+            status: 'Prefill 高效 / Decode 受限于带宽',
+            statusColor: 'bg-amber-500/20 text-amber-700 border-amber-500/30',
+            mapping: '通过 CDMA 将 V 矩阵从 DBBIF/SRAMIF 读入 CBUF，与注意力矩阵 P 执行 1×1 卷积乘加',
+            bottleneck: 'Prefill 阶段可满载运行；但在 Decode 单 Token 阶段，Batch=1 导致每个 V 元素读入 CBUF 后仅使用 1 次，性能完全取决于 DBBIF/SRAMIF 的外部总线带宽。',
+            rlcImpact: '可利用 BDMA (Bridge DMA) 在后台将热区 KV Cache 提前搬运至低延迟 SRAMIF 以掩盖访存延迟。'
+          }
+        }
+      },
+      layernorm: {
+        title: 'Stage 5: 残差连接 (Residual Add) 与 LayerNorm / RMSNorm',
+        formula: 'Z = X + SubLayer(X),   Y = (Z - μ) / √(σ² + ε) ⊙ γ + β   (沿隐藏维度 D 求均值 μ 与方差 σ²)',
+        nature: '逐元素向量加法 + 跨全部通道 D 的均值/方差归约与缩放偏置',
+        desc: 'Transformer 每个子层后必经的稳定化操作：先将残差分支与主分支逐元素相加，再沿特征通道维度 D 计算均值与方差，完成标准化后乘以可学习参数 γ 并加上 β。',
+        archs: {
+          eyeriss: {
+            status: '无专用归约与缩放引擎',
+            statusColor: 'bg-rose-500/20 text-rose-700 border-rose-500/30',
+            mapping: '残差相加需借用 PE 累加器或写回 GLB 累加；均值/方差/平方根倒数需回退 CPU',
+            bottleneck: 'Eyeriss 没有类似 NVDLA SDP 的独立逐元素 (Element-wise) 向量运算流水线，也没有求平方根倒数 (rsqrt) 的查找表硬件。',
+            rlcImpact: 'LayerNorm 之后的特征分布呈零均值高斯分布，正负值各半且极少精确为 0，使后续层的零值压缩失效。'
+          },
+          shidiannao: {
+            status: '1D ALU 仅支持逐点激活',
+            statusColor: 'bg-rose-500/20 text-rose-700 border-rose-500/30',
+            mapping: 'PE 加法器可完成残差相加，但跨 D=768 通道的方差统计与 rsqrt 超出 1D ALU 能力',
+            bottleneck: 'ShiDianNao 的 1D ALU 设计初衷是对每个输出神经元独立应用分段线性激活函数，不支持跨数百个通道的两遍统计归约。',
+            rlcImpact: '需要频繁通过主控读取 NBout 进行归一化后再写回 NBin。'
+          },
+          nvdla: {
+            status: 'SDP 原生支持残差与 γ/β 缩放 (归约需拆解)',
+            statusColor: 'bg-emerald-500/20 text-emerald-700 border-emerald-500/30',
+            mapping: 'SDP Element-Wise (EW) 模块原生硬件支持两个特征立方体的逐元素残差相加！γ 缩放与 β 偏置可直接映射至 SDP 的 Per-Channel Scaling/Bias 单元',
+            bottleneck: '注意区分：CNN 时代的 BatchNorm 均值/方差在推理时是离线固定的静态常数（SDP 可单周期完成）；而 Transformer 的 LayerNorm 均值/方差必须在运行时动态跨通道求取，CDP 的 LRN 窗口 (≤9) 太窄，需多次归约配合 SDP LUT 完成。',
+            rlcImpact: 'SDP 的双输入通道 (CACC FIFO + SDP-RDMA) 让卷积输出与残差分支在片上直接相加，省去一次 DRAM 写回！'
+          }
+        }
+      },
+      ffn_gelu: {
+        title: 'Stage 6: 前馈网络 FFN / MLP (升维 4D + GELU/SwiGLU + 降维 D)',
+        formula: 'FFN(X) = GELU(X · W_1 + b_1) · W_2 + b_2   (W_1: [D, 4D], W_2: [4D, D], 占模型约 2/3 参数量)',
+        nature: '超大静态权重矩阵乘 (占 Transformer 计算量与参数量 60%+)',
+        desc: 'FFN 层包含两个巨大的线性全连接层（通常在 D 与 4D 之间升维与降维）以及中间的平滑非线性激活函数 (GELU / SiLU / SwiGLU)。这是三款加速器最能发挥 MAC 阵列算力的阶段。',
+        archs: {
+          eyeriss: {
+            status: '中等适配 (Batching 提升 FC 复用)',
+            statusColor: 'bg-amber-500/20 text-amber-700 border-amber-500/30',
+            mapping: '将 L 个 Token 视为 Batch Size = L 的全连接层，权重驻留 Filter Spad，多个 Token 的特征连续流过 Ifmap Spad',
+            bottleneck: '正如 Eyeriss 论文所示，当 Batch Size (此处为序列长度 L) ≥ 16 时，全连接层可通过跨 Token 复用权重提升至少 1.3× 能效；但 GELU 激活函数无法由片上硬件 ReLU 完成，需近似或查表。',
+            rlcImpact: '由于 GELU 在负半轴有非零平滑曲率，不再像 ReLU 那样产生 50% 以上的精确零值。'
+          },
+          shidiannao: {
+            status: '权重体积严重超限',
+            statusColor: 'bg-rose-500/20 text-rose-700 border-rose-500/30',
+            mapping: '需将 [D, 4D] 巨型权重矩阵切分为上百个小块 (Tiles) 分批装入 128 KB SB',
+            bottleneck: '以 D=768 为例，仅 W_1 和 W_2 两个矩阵在 16-bit 下即高达 9 MB，是 ShiDianNao 128 KB SB 容量的 72 倍！完全违背了其“权重全片上驻留”的设计前提。',
+            rlcImpact: '不过 ShiDianNao 的 1D 多功能 ALU 可通过修改分段线性逼近系数，直接在片上硬件近似计算 GELU 或 SiLU 曲线！'
+          },
+          nvdla: {
+            status: '高度契合 (CMAC + SDP LUT 融合流水)',
+            statusColor: 'bg-emerald-500/20 text-emerald-700 border-emerald-500/30',
+            mapping: 'CMAC 执行 [L, D]×[D, 4D] 1×1 卷积 → CACC 累加 → Fused FIFO 直通 SDP → SDP 利用内置 LUT 硬件查表插值计算 GELU 激活！',
+            bottleneck: '这是 NVDLA 运行 Transformer 最流畅的环节！CONV 与 SDP 通过 Fused 模式串联，既发挥了 1024 MACs 的矩阵吞吐，又用 SDP 的双 LUT 完美解决了 GELU/SiLU 超越函数激活。',
+            rlcImpact: '在 Decode 阶段若多请求并发，可启用 NVDLA 的硬件 Batching 模式重用 W_1/W_2 权重，成倍降低 DRAM 带宽瓶颈。'
+          }
+        }
+      }
+    };
+
+    const tfState = {
+      selectedOp: 'qkv_proj',
+      phase: 'prefill', // 'prefill' | 'decode'
+      seqLen: 512,
+      hiddenDim: 768
+    };
+
+    let tfBarChartInstance = null;
+
+    function renderTransformerOpCards() {
+      const opObj = TF_OPS_DATA[tfState.selectedOp];
+      if (!opObj) return;
+
+      document.getElementById('tf-op-formula-badge').textContent = opObj.formula;
+      document.getElementById('tf-op-title').textContent = opObj.title;
+      document.getElementById('tf-op-nature').textContent = opObj.nature;
+      document.getElementById('tf-op-desc').textContent = opObj.desc;
+
+      document.querySelectorAll('.tf-op-btn').forEach((btn) => {
+        const active = btn.getAttribute('data-tfop') === tfState.selectedOp;
+        btn.className = `tf-op-btn text-left p-3 rounded-xl border-2 transition-all ${
+          active
+            ? 'bg-indigo-50/90 border-indigo-500 shadow-lg shadow-indigo-500/10'
+            : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+        }`;
+      });
+
+      const archMeta = [
+        { key: 'eyeriss', name: 'Eyeriss (MIT)', border: 'border-indigo-500/40', dot: 'bg-indigo-400' },
+        { key: 'shidiannao', name: 'ShiDianNao (ICT CAS)', border: 'border-emerald-500/40', dot: 'bg-emerald-400' },
+        { key: 'nvdla', name: 'NVDLA (NVIDIA)', border: 'border-amber-500/40', dot: 'bg-amber-400' }
+      ];
+
+      const container = document.getElementById('tf-arch-cards');
+      container.innerHTML = archMeta.map((m) => {
+        const d = opObj.archs[m.key];
+        return `
+          <div class="bg-slate-50 border ${m.border} rounded-xl p-4 flex flex-col justify-between space-y-3">
+            <div>
+              <div class="flex items-center justify-between gap-2 mb-2">
+                <div class="flex items-center gap-2 font-bold text-slate-900 text-sm">
+                  <span class="w-2.5 h-2.5 rounded-full ${m.dot}"></span>
+                  <span>${m.name}</span>
+                </div>
+                <span class="text-[11px] px-2 py-0.5 rounded border font-semibold ${d.statusColor}">${d.status}</span>
+              </div>
+
+              <div class="space-y-2.5 text-xs mt-3">
+                <div class="bg-white shadow-sm rounded-lg p-2.5 border border-slate-200">
+                  <div class="text-slate-500 font-semibold mb-0.5">硬件映射路径 (Mapping Path)：</div>
+                  <div class="text-slate-800 leading-relaxed">${d.mapping}</div>
+                </div>
+
+                <div class="bg-white shadow-sm rounded-lg p-2.5 border border-slate-200">
+                  <div class="text-rose-700 font-semibold mb-0.5">核心架构瓶颈 (Architectural Bottleneck)：</div>
+                  <div class="text-slate-700 leading-relaxed">${d.bottleneck}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-200 text-[11px] text-slate-500 leading-relaxed">
+              <strong class="text-sky-700">硬件特性交互：</strong>${d.rlcImpact}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function updateTransformerSimulator() {
+      const L = tfState.seqLen;
+      const D = tfState.hiddenDim;
+      const isPrefill = tfState.phase === 'prefill';
+
+      document.getElementById('val-tf-seq').textContent = `${L} Tokens`;
+      document.getElementById('val-tf-dim').textContent = String(D);
+
+      // Update Phase Toggle Buttons
+      document.querySelectorAll('.tf-phase-btn').forEach((btn) => {
+        const active = btn.getAttribute('data-tfphase') === tfState.phase;
+        btn.className = `tf-phase-btn px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+          active ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-900'
+        }`;
+      });
+
+      // Compute Memory Footprints (16-bit = 2 Bytes per element)
+      // Single layer weights: Q,K,V,O (4 * D * D) + FFN W1,W2 (8 * D * D) = 12 * D^2 elements -> 24 * D^2 bytes
+      const qkvoWeightMB = (4 * D * D * 2) / (1024 * 1024);
+      const fullLayerWeightMB = (12 * D * D * 2) / (1024 * 1024);
+      const kvCacheMB = (2 * L * D * 2) / (1024 * 1024);
+
+      document.getElementById('tf-mem-summary').textContent =
+        `单层总权重 (QKV+O+FFN): ${fullLayerWeightMB.toFixed(2)} MB | 单层 KV Cache: ${kvCacheMB.toFixed(2)} MB`;
+
+      document.getElementById('tf-phase-explanation').textContent = isPrefill
+        ? `当前处于 Prefill (预填充) 阶段：${L} 个 Token 并行输入，算术强度高。但由于注意力矩阵尺寸达 ${L}×${L}，且单层权重 (${fullLayerWeightMB.toFixed(1)} MB) 远超传统片上缓存，对片上 NoC 广播机制与 Softmax 归约提出严峻挑战。`
+        : `当前处于 Decode (自回归生成) 阶段：每次仅生成 1 个新 Token，所有矩阵乘退化为向量乘 (GEMV，Batch=1)，每步必须从内存读取 ${fullLayerWeightMB.toFixed(1)} MB 权重与 ${kvCacheMB.toFixed(2)} MB 历史 KV Cache，严重受限于片外内存带宽 (Memory-Bound)。`;
+
+      // Calculate dynamic utilization for Eyeriss, ShiDianNao, NVDLA
+      const eyerissUtil = isPrefill
+        ? Math.max(22, Math.min(54, 48 - (L / 512) * 3.5 - (D / 1024) * 2))
+        : Math.max(6.5, Math.min(18, 15 - (L / 1024) * 2));
+
+      const sdnOverflowRatio = (fullLayerWeightMB * 1024) / 128;
+      const sdnUtil = isPrefill
+        ? Math.max(4.0, Math.min(24, 28 / Math.sqrt(sdnOverflowRatio / 10)))
+        : Math.max(1.8, Math.min(8.5, 9 / Math.sqrt(sdnOverflowRatio / 8)));
+
+      const nvdlaUtil = isPrefill
+        ? Math.max(68, Math.min(92, 90 - (L / 1024) * 4.5))
+        : Math.max(14, Math.min(36, 32 - (L / 1024) * 3.2));
+
+      document.getElementById('tf-sim-eyeriss-util').textContent = `${eyerissUtil.toFixed(1)}%`;
+      document.getElementById('tf-sim-eyeriss-badge').textContent = isPrefill ? 'R=S=1 复用退化' : 'DRAM 带宽受限';
+      document.getElementById('tf-sim-eyeriss-detail').textContent = isPrefill
+        ? `1×1 投影无滑动窗口斜向复用；Attention 矩阵需频繁改写 Filter Spad，且 Softmax/LayerNorm 需回退 CPU。`
+        : `Decode 单 Token (Batch=1) 无法在 Ifmap Spad 中跨 Token 复用权重，168 个 PE 处于饥饿等待状态。`;
+
+      document.getElementById('tf-sim-sdn-util').textContent = `${sdnUtil.toFixed(1)}%`;
+      document.getElementById('tf-sim-sdn-badge').textContent = `超片上容量 ${Math.round(sdnOverflowRatio)}×`;
+      document.getElementById('tf-sim-sdn-detail').textContent =
+        `单层权重 (${fullLayerWeightMB.toFixed(1)} MB) 是 128KB SB 的 ${Math.round(sdnOverflowRatio)} 倍，全片上无 DRAM 架构被迫高频停机换页。`;
+
+      document.getElementById('tf-sim-nvdla-util').textContent = `${nvdlaUtil.toFixed(1)}%`;
+      document.getElementById('tf-sim-nvdla-badge').textContent = isPrefill ? 'CMAC 满载 + LUT' : 'GEMV 访存瓶颈';
+      document.getElementById('tf-sim-nvdla-detail').textContent = isPrefill
+        ? `D=${D} 对齐 Atomic-C(64)×Atomic-K(16)，QKV 与 FFN 以 1×1 Direct Conv 高效流水，SDP LUT 硬件加速 GELU。`
+        : `单 Token 解码使 1024-MAC 阵列利用率骤降，需开启硬件 Batching 或依赖 SRAMIF 高速缓存平摊权重读取。`;
+
+      if (tfBarChartInstance) {
+        tfBarChartInstance.data.datasets[1].data = [
+          parseFloat(eyerissUtil.toFixed(1)),
+          parseFloat(sdnUtil.toFixed(1)),
+          parseFloat(nvdlaUtil.toFixed(1))
+        ];
+        tfBarChartInstance.update();
+      }
+    }
+
+    function initTfBarChart() {
+      const canvas = document.getElementById('tfBarChart');
+      if (!canvas || typeof Chart === 'undefined') return;
+      if (tfBarChartInstance) {
+        tfBarChartInstance.destroy();
+      }
+      tfBarChartInstance = new Chart(canvas, {
+        type: 'bar',
+        data: {
+          labels: ['Eyeriss (MIT)', 'ShiDianNao (ICT CAS)', 'NVDLA Large (NVIDIA)'],
+          datasets: [
+            {
+              label: '经典 3×3 CNN 卷积层利用率 (%)',
+              data: [92.5, 98.0, 88.5],
+              backgroundColor: 'rgba(56, 189, 248, 0.75)',
+              borderColor: '#38bdf8',
+              borderWidth: 1,
+              borderRadius: 6
+            },
+            {
+              label: '当前 Transformer 配置下有效利用率 (%)',
+              data: [38.2, 12.5, 86.4],
+              backgroundColor: 'rgba(244, 63, 94, 0.75)',
+              borderColor: '#fb7185',
+              borderWidth: 1,
+              borderRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              ticks: { color: '#475569', font: { size: 10 } },
+              grid: { color: 'rgba(148, 163, 184, 0.15)' }
+            },
+            x: {
+              ticks: { color: '#1e293b', font: { size: 11 } },
+              grid: { display: false }
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#334155', font: { size: 11 } }
+            }
+          }
+        }
+      });
+    }
+
+    // ============================================================================
+    // 6C. MAESTRO DATAFLOW & DSE ENGINE (VIEW 4)
+    // ============================================================================
+    const MAESTRO_FLOWS = {
+      yr_p: {
+        tag: 'YR-P (Eyeriss Row-Stationary)',
+        code: `// MAESTRO Data-Centric Directives for Eyeriss (YR-P)
+ConstantSz K, C;
+SpatialMap(Sz_Y, 1) Y;      // 跨逻辑 Cluster 空间并行映射特征图行 Y
+TemporalMap(Sz_X, 1) X;     // 沿时间步滑动特征图列 X
+Cluster(R_sz);              // 将每 R_sz 个 PE 聚为一个逻辑 Cluster
+SpatialMap(1, 1) R;         // Cluster 内部跨 PE 空间展开卷积核行 R
+TemporalMap(S_sz, S_sz) S;  // PE 内部本地 Spad 时间复用卷积核列 S`,
+        note: '<strong>Cluster(R) 双层空间解耦：</strong>Cluster 指令上方将输出/输入行 <code>Y</code> 分布到不同 PE 簇，Cluster 下方在簇内将滤波器行 <code>R</code> 分布到不同 PE。由于偏移量 (offset=1) 小于窗口尺寸，相邻簇之间对输入特征图产生斜向重叠，被 MAESTRO Reuse Engine 自动识别为<strong>对角线空间多播 (Diagonal Spatial Multicast)</strong>。',
+        reuses: [
+          { title: 'Spatial Multicast (空间多播)', badge: 'GIN X/Y Tag Bus', color: 'border-indigo-300 bg-indigo-50/70', desc: '同一卷积核权重行广播给同行 PE；同一输入特征图行沿对角线多播给多个 Cluster。' },
+          { title: 'Temporal Multicast (时间驻留)', badge: 'PE Filter/Ifmap Spad', color: 'border-emerald-300 bg-emerald-50/70', desc: '1D 卷积行内滑动时，权重与窗口像素在 PE 私有寄存器/SRAM 中跨时间步重复读取。' },
+          { title: 'Spatial Reduction (空间归约)', badge: 'Inter-PE Local Net (LN)', color: 'border-amber-300 bg-amber-50/70', desc: '同一 Cluster 内的 R 个 PE 各自计算不同行的 1D 卷积部分和，沿垂直方向跨 PE 累加。' },
+          { title: 'Temporal Reduction (时间归约)', badge: '24×16b Psum Spad', color: 'border-sky-300 bg-sky-50/70', desc: '在单 PE 内部跨 S 列与多输入通道 C 原地累加部分和，大幅降低 GLB 写回频次。' }
+        ],
+        preference: '根据 <a href="https://arxiv.org/html/1805.02566v6" target="_blank" rel="noopener noreferrer" class="text-indigo-600 underline font-medium">MAESTRO Figure 11</a> 实测：在浅层网络 (Early Layers, 如 ResNet50 CONV1 / VGG16 前几层) 中，<strong>YR-P 的激活复用因子高出 5.8×，权重复用因子高出 15.17×</strong>，且对片上网络带宽需求最低；但在 1×1 点卷积或深层窄特征图层中，其复用优势被 KC-P 追平。'
+      },
+      yx_p: {
+        tag: 'YX-P (ShiDianNao Output-Stationary)',
+        code: `// MAESTRO Data-Centric Directives for ShiDianNao (YX-P)
+TemporalMap(1, 1) K;        // 全阵列在同一拍共享同一个输出通道 K
+SpatialMap(1, 1) Y';        // 跨 Cluster 空间映射输出特征图行 Y' (8行)
+Cluster(8);                 // 每行 8 个 PE 组成一个水平 Cluster
+SpatialMap(1, 1) X';        // Cluster 内跨 PE 空间映射输出特征图列 X' (8列)
+TemporalMap(1, 1) C;        // 沿时间步遍历输入通道 C
+TemporalMap(R_sz, R_sz) R;  // 沿时间步遍历卷积核高 R
+TemporalMap(S_sz, S_sz) S;  // 沿时间步遍历卷积核宽 S`,
+        note: '<strong>二维输出平面完全展开：</strong>通过外层 <code>SpatialMap Y′</code> 与内层 <code>SpatialMap X′</code>，8×8 PE 网格在空间上同时覆盖二维输出特征图的宽与高，而将 <code>C, R, S</code> 全部放在内层 <code>TemporalMap</code>，从而令每个输出神经元固定驻留在单一 PE 内直至算完。',
+        reuses: [
+          { title: 'Spatial Multicast (空间多播)', badge: 'SB Global Broadcast', color: 'border-indigo-300 bg-indigo-50/70', desc: '因为 K, C, R, S 均为 TemporalMap，所有 64 个 PE 在同一周期接收完全相同的权重（64× 空间广播）。' },
+          { title: 'Spatio-Temporal Reuse (网格移位)', badge: '2D Mesh Right/Down Shift', color: 'border-emerald-300 bg-emerald-50/70', desc: '相邻 PE 的 X′ 与 Y′ 坐标相差 1，当 R, S 在时间上步进时，通过邻居寄存器左移/上移直接复用重叠像素。' },
+          { title: 'Spatial Reduction (空间归约)', badge: '无需空间归约 (0 开销)', color: 'border-amber-300 bg-amber-50/70', desc: '被归约的维度 (C, R, S) 未在空间展开，因此 PE 之间无需传递或累加 Partial Sum！' },
+          { title: 'Temporal Reduction (时间归约)', badge: 'PE Internal Accumulator', color: 'border-sky-300 bg-sky-50/70', desc: '100% 的部分和归约均在 PE 本地累加器寄存器中跨时间步完成 (Output-Stationary)。' }
+        ],
+        preference: '根据 <a href="https://arxiv.org/html/1805.02566v6" target="_blank" rel="noopener noreferrer" class="text-indigo-600 underline font-medium">MAESTRO Figure 10(e)</a> 实测：<strong>YX-P 在高分辨率图像分割网络 (如 UNet 572×572 宽特征图) 上运行时间最短</strong>；但在 1×1 点卷积与 Transformer 线性层中，由于没有滑动窗口重叠 (R=S=1)，其片上带宽需求暴增且在特征图尺寸小于 8×8 的深层网络中发生严重 PE 闲置。'
+      },
+      kc_p: {
+        tag: 'KC-P (NVDLA Channel-Partitioned)',
+        code: `// MAESTRO Data-Centric Directives for NVDLA (KC-P)
+SpatialMap(1, 1) K;         // 跨 Cluster 空间并行展开输出卷积核 K (Atomic-K)
+TemporalMap(Sz_Y, 1) Y';    // 沿时间步顺序流过输出特征图行 Y'
+TemporalMap(Sz_X, 1) X';    // 沿时间步顺序流过输出特征图列 X'
+Cluster(Atomic_C);          // 将 Atomic_C 个 MAC 聚为一个通道归约簇
+SpatialMap(1, 1) C;         // 簇内跨 MAC 空间并行展开输入通道 C (Atomic-C)
+TemporalMap(R_sz, R_sz) R;  // 沿时间步遍历卷积核高 R
+TemporalMap(S_sz, S_sz) S;  // 沿时间步遍历卷积核宽 S`,
+        note: '<strong>正交于图像尺寸的通道级并行：</strong><code>KC-P</code> 不在空间上展开特征图坐标 <code>Y, X</code>，而是利用 <code>Cluster(Atomic_C)</code> 在空间上同时展开输出通道 <code>K</code> 与输入通道 <code>C</code>。这使其利用率完全不受特征图分辨率缩小或 1×1 卷积核的影响！',
+        reuses: [
+          { title: 'Spatial Multicast (空间多播)', badge: 'CBUF → Atomic-K Broadcast', color: 'border-indigo-300 bg-indigo-50/70', desc: '输入特征图与输出通道 K 解耦，因此 CBUF 读出的 Atomic-C 个输入通道数据可同时广播给全部 Atomic-K 个核簇。' },
+          { title: 'Temporal Multicast (时间驻留)', badge: 'CBUF Weight Staging', color: 'border-emerald-300 bg-emerald-50/70', desc: '当内层时间步扫描 Y′ 与 X′ 时，卷积核权重驻留在本地缓冲中跨所有空间像素复用。' },
+          { title: 'Spatial Reduction (空间归约)', badge: 'CMAC Adder Tree → CACC', color: 'border-amber-300 bg-amber-50/70', desc: '簇内沿被归约的输入通道维度 C 空间并行乘加，必须通过硬件加法树单周期空间归约成 1 个部分和。' },
+          { title: 'Temporal Reduction (时间归约)', badge: 'CACC Accumulation Regs', color: 'border-sky-300 bg-sky-50/70', desc: '跨不同通道分块与 R×S 窗口周期在 CACC 高位宽累加器中完成时间归约。' }
+        ],
+        preference: '根据 <a href="https://arxiv.org/html/1805.02566v6" target="_blank" rel="noopener noreferrer" class="text-indigo-600 underline font-medium">MAESTRO Case Study I & II</a>：<strong>KC-P 在深层卷积 (C > Y)、1×1 点卷积以及 Transformer 矩阵乘中取得最高的综合吞吐率</strong>。但若硬件移除空间多播与加法树空间归约支持，MAESTRO Table 5 显示其能耗将飙升 47%！'
+      },
+      adaptive: {
+        tag: 'Adaptive Dataflow (MAERI / FlexFlow 动态重构)',
+        code: `// MAESTRO Adaptive Dataflow Strategy (Per-Layer Optimal Directive)
+if (Layer.type == EARLY_CONV && Y > C && R > 1) {
+  emit_directives(YR_P);   // 浅层大核卷积采用 Eyeriss YR-P 最大化卷积复用
+} else if (Layer.type ==DW_CONV) {
+  emit_directives(YX_P);   // Depthwise 卷积 (K=1) 切换为空间平面展开 YX-P
+} else {
+  emit_directives(KC_P);   // 深层多通道 / 1x1 Conv / Transformer 采用 NVDLA KC-P
+}`,
+        note: '<strong>为什么单一固定数据流无法通吃所有层？</strong>MAESTRO 证明没有任何一种固定数据流能在所有算子上同时最优（例如 KC-P 在 Depthwise 卷积中因 K=1 损失整整一个并行维度；YX-P 在 1×1 卷积中带宽爆炸）。通过可重构互连网（如 <a href="https://arxiv.org/html/1805.02566v6" target="_blank" rel="noopener noreferrer" class="text-indigo-600 underline">MAERI 分发/归约树</a>）按层切换指令，可获得显著收益。',
+        reuses: [
+          { title: '浅层卷积 (Early Layers)', badge: '自动切换 YR-P / YX-P', color: 'border-indigo-300 bg-indigo-50/70', desc: '当输入通道 C=3 时避免 KC-P 的通道并行饥饿，改用空间/行并行榨取 15× 权重局部复用。' },
+          { title: '深层与 1×1 算子 (Late / GEMM)', badge: '自动切换 KC-P', color: 'border-emerald-300 bg-emerald-50/70', desc: '当特征图缩小至 7×7 或 R=S=1 (Transformer) 时，立即切换为 C×K 通道并行满载运行。' },
+          { title: 'Depthwise 卷积 (DWConv)', badge: '规避 K=1 并行坍塌', color: 'border-amber-300 bg-amber-50/70', desc: '在 MobileNet 深度可分离卷积中将并行维度从 K 切换到 C 与 Y/X，消除 MAC 闲置。' },
+          { title: 'MAESTRO 实测综合收益', badge: '-37% 延迟 / -10% 能耗', color: 'border-sky-300 bg-sky-50/70', desc: '在 5 款主流模型上，自适应数据流比固定单一数据流降低 37% 运行时间与 10% 能耗。' }
+        ],
+        preference: '根据 <a href="https://arxiv.org/html/1805.02566v6" target="_blank" rel="noopener noreferrer" class="text-indigo-600 underline font-medium">MAESTRO Figure 10(f)</a>：通过为每个网络层匹配最佳 MAESTRO 指令（或构建包含多种子加速器的异构 SoC），可在相同 256 PE 与 32 GB/s 硬件预算下实现全算子帕累托最优。'
+      }
+    };
+
+    const maestroState = {
+      selectedFlow: 'yr_p',
+      selectedOp: 'early_conv',
+      peCount: 256,
+      nocBw: 32,
+      l1SizeKB: 2.0,
+      l2SizeKB: 512
+    };
+
+    let maestroEnergyChartInstance = null;
+    let maestroPerfChartInstance = null;
+
+    function renderMaestroDirectives() {
+      const flowObj = MAESTRO_FLOWS[maestroState.selectedFlow];
+      if (!flowObj) return;
+
+      document.querySelectorAll('.maestro-flow-btn').forEach((btn) => {
+        const active = btn.getAttribute('data-mflow') === maestroState.selectedFlow;
+        btn.className = `maestro-flow-btn px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+          active ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+        }`;
+      });
+
+      document.getElementById('maestro-dsl-tag').textContent = flowObj.tag;
+      document.getElementById('maestro-dsl-code').textContent = flowObj.code;
+      document.getElementById('maestro-dsl-note').innerHTML = flowObj.note;
+      document.getElementById('maestro-op-preference').innerHTML = flowObj.preference;
+
+      document.getElementById('maestro-reuse-cards').innerHTML = flowObj.reuses.map((r) => `
+        <div class="rounded-xl border p-3.5 ${r.color}">
+          <div class="flex items-center justify-between gap-2 mb-1.5">
+            <span class="text-xs font-bold text-slate-900">${r.title}</span>
+            <span class="text-[10px] mono px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-700 font-semibold">${r.badge}</span>
+          </div>
+          <p class="text-xs text-slate-700 leading-relaxed">${r.desc}</p>
+        </div>
+      `).join('');
+    }
+
+    function computeMaestroDSE() {
+      const { selectedOp, peCount, nocBw, l1SizeKB, l2SizeKB } = maestroState;
+
+      document.getElementById('val-dse-pe').textContent = `${peCount} PEs`;
+      document.getElementById('val-dse-bw').textContent = `${nocBw} GB/s`;
+      document.getElementById('val-dse-l1').textContent = `${l1SizeKB.toFixed(1)} KB`;
+      document.getElementById('val-dse-l2').textContent = `${l2SizeKB} KB`;
+
+      document.querySelectorAll('.maestro-op-btn').forEach((btn) => {
+        const active = btn.getAttribute('data-mop') === selectedOp;
+        btn.className = `maestro-op-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+          active ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+        }`;
+      });
+
+      // Base profiles per operator modeled on MAESTRO Section 5.1 & 5.2
+      const opProfiles = {
+        early_conv: {
+          name: '浅层高分辨率卷积 (224×224, C=3, K=64, 7×7)',
+          totalMacsM: 118.0,
+          // [spatialUtilBase, bwDemandGBsAt256PE, l1EnergyFactor, l2EnergyFactor]
+          yr_p: { util: 0.92, bwReq: 10, l1E: 0.28, l2E: 0.14, note: 'YR-P 凭借行驻留获得 15.17× 权重复用与 5.8× 激活复用，低带宽下依然满载。' },
+          yx_p: { util: 0.94, bwReq: 18, l1E: 0.34, l2E: 0.22, note: '224×224 高分辨率特征图完美填满 2D 网格，输出驻留消除部分和写回。' },
+          kc_p: { util: 0.36, bwReq: 26, l1E: 0.52, l2E: 0.45, note: '首层输入通道 C=3 远小于 Atomic-C 并行度，导致严重的通道维度欠利用。' }
+        },
+        late_conv: {
+          name: '深层多通道卷积 (14×14, C=512, K=512, 3×3)',
+          totalMacsM: 462.0,
+          yr_p: { util: 0.78, bwReq: 16, l1E: 0.35, l2E: 0.24, note: '14×14 空间尺寸较小，需结合通道折叠映射，片上网络带宽压力温和。' },
+          yx_p: { util: 0.62, bwReq: 38, l1E: 0.48, l2E: 0.55, note: 'C=512, K=512 权重体积高达 4.5MB，远超片上缓冲，引发频繁换页开销。' },
+          kc_p: { util: 0.96, bwReq: 28, l1E: 0.30, l2E: 0.20, note: 'C=512 与 K=512 完美契合 KC-P 空间并行，吞吐率与能效在深层双双领先！' }
+        },
+        pw_transformer: {
+          name: '1×1 点卷积 / Transformer 线性投影 (L=512, C=768, K=768)',
+          totalMacsM: 302.0,
+          yr_p: { util: 0.48, bwReq: 34, l1E: 0.50, l2E: 0.42, note: 'R=S=1 无滑动窗口重叠，对角线空间复用归零，退化为单维内积。' },
+          yx_p: { util: 0.32, bwReq: 64, l1E: 0.62, l2E: 0.78, note: 'MAESTRO Fig.11(c) 指出 YX-P 在 1×1 算子中因失去卷积局部性导致带宽需求暴增。' },
+          kc_p: { util: 0.95, bwReq: 30, l1E: 0.31, l2E: 0.22, note: 'KC-P 不依赖 R×S 窗口复用，在 1×1 点卷积与 Transformer 矩阵乘上保持 95% 峰值利用率。' }
+        },
+        dw_conv: {
+          name: 'Depthwise 深度可分离卷积 (56×56, C=128, K=1, 3×3)',
+          totalMacsM: 3.6,
+          yr_p: { util: 0.82, bwReq: 14, l1E: 0.32, l2E: 0.20, note: '沿 Y 与 R 空间展开不依赖 K 维度，在 DWConv 上保持稳健能效。' },
+          yx_p: { util: 0.88, bwReq: 20, l1E: 0.36, l2E: 0.25, note: '56×56 平面在 YX-P 二维网格上并行良好，PE 内部累加 3×3 窗口。' },
+          kc_p: { util: 0.18, bwReq: 42, l1E: 0.68, l2E: 0.60, note: 'DWConv 中每个通道独立 (K=1)，导致 KC-P 的 K 空间并行维度彻底坍塌！' }
+        }
+      };
+
+      const prof = opProfiles[selectedOp];
+      const flows = [
+        { key: 'yr_p', title: 'YR-P (Eyeriss 风格)', accent: 'indigo', border: 'border-indigo-200' },
+        { key: 'yx_p', title: 'YX-P (ShiDianNao 风格)', accent: 'emerald', border: 'border-emerald-200' },
+        { key: 'kc_p', title: 'KC-P (NVDLA 风格)', accent: 'amber', border: 'border-amber-200' }
+      ];
+
+      const kpiHtml = [];
+      const energyDataMac = [];
+      const energyDataL1 = [];
+      const energyDataL2 = [];
+      const perfThroughput = [];
+      const bwRequiredList = [];
+
+      flows.forEach((f) => {
+        const p = prof[f.key];
+        // Scale bandwidth demand with PE count and inverse of L1 tiling factor
+        const l1TileBonus = Math.min(1.35, 0.75 + Math.log2(l1SizeKB + 1) * 0.22);
+        const l2DramBonus = Math.min(1.4, 0.7 + Math.log2(l2SizeKB / 64 + 1) * 0.16);
+        const scaledBwReq = (p.bwReq * (peCount / 256)) / l1TileBonus;
+        const nocThrottle = Math.min(1.0, nocBw / Math.max(1, scaledBwReq));
+        const effUtil = Math.min(99.0, p.util * nocThrottle * 100);
+        const gops = (peCount * 0.5 * (effUtil / 100)); // 500MHz equivalent
+        const runtimeMs = (prof.totalMacsM * 2) / Math.max(0.5, gops);
+
+        const macEnergy = 1.0;
+        const l1Energy = +(p.l1E / l1TileBonus).toFixed(2);
+        const l2Energy = +(p.l2E / l2DramBonus).toFixed(2);
+        const totalNormEnergy = +(macEnergy + l1Energy + l2Energy).toFixed(2);
+        const edp = +(runtimeMs * totalNormEnergy).toFixed(2);
+
+        energyDataMac.push(macEnergy);
+        energyDataL1.push(l1Energy);
+        energyDataL2.push(l2Energy);
+        perfThroughput.push(+effUtil.toFixed(1));
+        bwRequiredList.push(+scaledBwReq.toFixed(1));
+
+        const isBwBound = nocThrottle < 0.92;
+        const statusBadge = isBwBound
+          ? `<span class="text-[10px] px-2 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-300 font-semibold">NoC 带宽受限 (${scaledBwReq.toFixed(0)} GB/s)</span>`
+          : `<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold">计算满载 (Compute-Bound)</span>`;
+
+        kpiHtml.push(`
+          <div class="bg-slate-50 border ${f.border} rounded-xl p-4 flex flex-col justify-between space-y-3">
+            <div>
+              <div class="flex items-center justify-between gap-2 mb-2">
+                <span class="text-sm font-bold text-slate-900">${f.title}</span>
+                ${statusBadge}
+              </div>
+              <div class="grid grid-cols-3 gap-2 my-2 bg-white p-2.5 rounded-lg border border-slate-200 text-center">
+                <div>
+                  <div class="text-[10px] text-slate-500">PE 有效利用率</div>
+                  <div class="text-sm font-bold mono text-indigo-600">${effUtil.toFixed(1)}%</div>
+                </div>
+                <div>
+                  <div class="text-[10px] text-slate-500">预估延迟</div>
+                  <div class="text-sm font-bold mono text-slate-900">${runtimeMs.toFixed(2)} ms</div>
+                </div>
+                <div>
+                  <div class="text-[10px] text-slate-500">归一化 EDP</div>
+                  <div class="text-sm font-bold mono text-emerald-600">${edp}</div>
+                </div>
+              </div>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed border-t border-slate-200 pt-2">${p.note}</p>
+          </div>
+        `);
+      });
+
+      document.getElementById('dse-kpi-cards').innerHTML = kpiHtml.join('');
+
+      if (maestroEnergyChartInstance) {
+        maestroEnergyChartInstance.data.datasets[0].data = energyDataMac;
+        maestroEnergyChartInstance.data.datasets[1].data = energyDataL1;
+        maestroEnergyChartInstance.data.datasets[2].data = energyDataL2;
+        maestroEnergyChartInstance.update();
+      }
+      if (maestroPerfChartInstance) {
+        maestroPerfChartInstance.data.datasets[0].data = perfThroughput;
+        maestroPerfChartInstance.data.datasets[1].data = bwRequiredList;
+        maestroPerfChartInstance.update();
+      }
+    }
+
+    function initMaestroCharts() {
+      const eCanvas = document.getElementById('maestroEnergyChart');
+      const pCanvas = document.getElementById('maestroPerfChart');
+      if (!eCanvas || !pCanvas || typeof Chart === 'undefined') return;
+
+      if (maestroEnergyChartInstance) maestroEnergyChartInstance.destroy();
+      if (maestroPerfChartInstance) maestroPerfChartInstance.destroy();
+
+      maestroEnergyChartInstance = new Chart(eCanvas, {
+        type: 'bar',
+        data: {
+          labels: ['YR-P (Eyeriss)', 'YX-P (ShiDianNao)', 'KC-P (NVDLA)'],
+          datasets: [
+            { label: 'MAC 算术运算能耗', data: [1.0, 1.0, 1.0], backgroundColor: '#6366f1' },
+            { label: 'L1 Scratchpad 访问能耗', data: [0.28, 0.34, 0.52], backgroundColor: '#10b981' },
+            { label: 'L2 Global Buffer & NoC 能耗', data: [0.14, 0.22, 0.45], backgroundColor: '#f59e0b' }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { stacked: true, ticks: { color: '#1e293b', font: { size: 11 } }, grid: { display: false } },
+            y: { stacked: true, beginAtZero: true, ticks: { color: '#475569', font: { size: 10 } }, grid: { color: 'rgba(148, 163, 184, 0.25)' } }
+          },
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#334155', font: { size: 11 } } }
+          }
+        }
+      });
+
+      maestroPerfChartInstance = new Chart(pCanvas, {
+        type: 'bar',
+        data: {
+          labels: ['YR-P (Eyeriss)', 'YX-P (ShiDianNao)', 'KC-P (NVDLA)'],
+          datasets: [
+            { label: '实际可达 PE 利用率 (%)', data: [92, 94, 36], backgroundColor: '#4f46e5', borderRadius: 6 },
+            { label: '不阻塞所需峰值 NoC 带宽 (GB/s)', data: [10, 18, 26], backgroundColor: '#e11d48', borderRadius: 6 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { ticks: { color: '#1e293b', font: { size: 11 } }, grid: { display: false } },
+            y: { beginAtZero: true, ticks: { color: '#475569', font: { size: 10 } }, grid: { color: 'rgba(148, 163, 184, 0.25)' } }
+          },
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#334155', font: { size: 11 } } }
+          }
+        }
+      });
+    }
+
+    // ============================================================================
+    // 7. EVENT LISTENERS & INITIALIZATION
+    // ============================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      // Top Main View Switcher
+      document.querySelectorAll('.main-view-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const targetView = btn.getAttribute('data-mainview');
+          state.mainView = targetView;
+
+          document.querySelectorAll('.main-view-btn').forEach((b) => {
+            const active = b.getAttribute('data-mainview') === targetView;
+            b.className = `main-view-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+              active ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-900'
+            }`;
+          });
+
+          const expSection = document.getElementById('view-explorer');
+          const cmpSection = document.getElementById('view-compare');
+          const tfSection = document.getElementById('view-transformer');
+          const maestroSection = document.getElementById('view-maestro');
+          expSection.classList.add('hidden');
+          cmpSection.classList.add('hidden');
+          tfSection.classList.add('hidden');
+          maestroSection.classList.add('hidden');
+
+          if (targetView === 'explorer') {
+            expSection.classList.remove('hidden');
+          } else if (targetView === 'compare') {
+            cmpSection.classList.remove('hidden');
+            initRadarChart();
+            updateWorkloadMapper();
+          } else if (targetView === 'transformer') {
+            tfSection.classList.remove('hidden');
+            renderTransformerOpCards();
+            initTfBarChart();
+            updateTransformerSimulator();
+          } else if (targetView === 'maestro') {
+            maestroSection.classList.remove('hidden');
+            renderMaestroDirectives();
+            initMaestroCharts();
+            computeMaestroDSE();
+          }
+        });
+      });
+
+      // Architecture Card Switcher
+      document.querySelectorAll('.arch-select-card').forEach((card) => {
+        card.addEventListener('click', () => {
+          const newArch = card.getAttribute('data-arch');
+          if (newArch && ARCH_DATA[newArch]) {
+            stopSimPlayback();
+            state.currentArch = newArch;
+            state.currentSubmode = ARCH_DATA[newArch].submodes[0].id;
+            state.selectedComp = ARCH_DATA[newArch].defaultComponent;
+            state.simCycle = 0;
+            updateExplorerUI();
+          }
+        });
+      });
+
+      // Simulator Controls
+      document.getElementById('btn-sim-prev').addEventListener('click', () => {
+        stopSimPlayback();
+        state.simCycle = (state.simCycle + 5) % 6;
+        renderSimulatorStep();
+      });
+
+      document.getElementById('btn-sim-next').addEventListener('click', () => {
+        stopSimPlayback();
+        state.simCycle = (state.simCycle + 1) % 6;
+        renderSimulatorStep();
+      });
+
+      document.getElementById('btn-sim-reset').addEventListener('click', () => {
+        stopSimPlayback();
+        state.simCycle = 0;
+        renderSimulatorStep();
+      });
+
+      document.getElementById('btn-sim-play').addEventListener('click', () => {
+        toggleSimPlayback();
+      });
+
+      // Workload Presets & Sliders
+      const presets = {
+        alexnet_conv1: { cin: 3, kout: 96, kernel: 11 },
+        vgg16_conv3: { cin: 256, kout: 256, kernel: 3 },
+        mobilenet_pw: { cin: 64, kout: 128, kernel: 1 }
+      };
+
+      document.querySelectorAll('.workload-preset-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const pKey = btn.getAttribute('data-preset');
+          const p = presets[pKey];
+          if (p) {
+            state.workload = { ...p };
+            document.getElementById('input-cin').value = String(p.cin);
+            document.getElementById('input-kout').value = String(p.kout);
+            document.getElementById('input-kernel').value = String(p.kernel);
+            document.querySelectorAll('.workload-preset-btn').forEach((b) => {
+              b.className = b === btn
+                ? 'workload-preset-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-600 text-white'
+                : 'workload-preset-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200';
+            });
+            updateWorkloadMapper();
+          }
+        });
+      });
+
+      ['input-cin', 'input-kout', 'input-kernel'].forEach((id) => {
+        document.getElementById(id).addEventListener('input', () => {
+          state.workload.cin = parseInt(document.getElementById('input-cin').value, 10);
+          state.workload.kout = parseInt(document.getElementById('input-kout').value, 10);
+          state.workload.kernel = parseInt(document.getElementById('input-kernel').value, 10);
+          updateWorkloadMapper();
+        });
+      });
+
+      // GitHub Modal Controls
+      const ghModal = document.getElementById('github-modal');
+      document.getElementById('btn-open-github-modal').addEventListener('click', () => {
+        ghModal.classList.remove('hidden');
+      });
+      document.getElementById('btn-close-github-modal').addEventListener('click', () => {
+        ghModal.classList.add('hidden');
+      });
+      document.getElementById('btn-close-github-modal-bottom').addEventListener('click', () => {
+        ghModal.classList.add('hidden');
+      });
+
+      document.getElementById('btn-copy-commands').addEventListener('click', () => {
+        const cmdText = [
+          'git init',
+          'git add index.html README.md .nojekyll',
+          'git commit -m "feat: add interactive Eyeriss, ShiDianNao, and NVDLA architecture visualizer"',
+          'git branch -M main',
+          'git push -u origin main'
+        ].join('\n');
+
+        const showToast = () => {
+          const toast = document.getElementById('copy-toast');
+          toast.classList.remove('opacity-0');
+          setTimeout(() => toast.classList.add('opacity-0'), 2200);
+        };
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(cmdText).then(showToast).catch(() => {
+            const ta = document.createElement('textarea');
+            ta.value = cmdText;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            showToast();
+          });
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = cmdText;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          showToast();
+        }
+      });
+
+      // Transformer View Controls
+      document.querySelectorAll('.tf-op-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const op = btn.getAttribute('data-tfop');
+          if (op && TF_OPS_DATA[op]) {
+            tfState.selectedOp = op;
+            renderTransformerOpCards();
+          }
+        });
+      });
+
+      document.querySelectorAll('.tf-phase-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const ph = btn.getAttribute('data-tfphase');
+          if (ph) {
+            tfState.phase = ph;
+            updateTransformerSimulator();
+          }
+        });
+      });
+
+      ['input-tf-seq', 'input-tf-dim'].forEach((id) => {
+        document.getElementById(id).addEventListener('input', () => {
+          tfState.seqLen = parseInt(document.getElementById('input-tf-seq').value, 10);
+          tfState.hiddenDim = parseInt(document.getElementById('input-tf-dim').value, 10);
+          updateTransformerSimulator();
+        });
+      });
+
+      renderTransformerOpCards();
+
+            // MAESTRO View Controls
+      document.querySelectorAll('.maestro-flow-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const mf = btn.getAttribute('data-mflow');
+          if (mf && MAESTRO_FLOWS[mf]) {
+            maestroState.selectedFlow = mf;
+            renderMaestroDirectives();
+          }
+        });
+      });
+
+      document.querySelectorAll('.maestro-op-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const mop = btn.getAttribute('data-mop');
+          if (mop) {
+            maestroState.selectedOp = mop;
+            computeMaestroDSE();
+          }
+        });
+      });
+
+      ['dse-pe-count', 'dse-noc-bw', 'dse-l1-size', 'dse-l2-size'].forEach((id) => {
+        document.getElementById(id).addEventListener('input', () => {
+          maestroState.peCount = parseInt(document.getElementById('dse-pe-count').value, 10);
+          maestroState.nocBw = parseInt(document.getElementById('dse-noc-bw').value, 10);
+          maestroState.l1SizeKB = parseFloat(document.getElementById('dse-l1-size').value);
+          maestroState.l2SizeKB = parseInt(document.getElementById('dse-l2-size').value, 10);
+          computeMaestroDSE();
+        });
+      });
+
+      renderMaestroDirectives();
+
+            // Initial Render
+      updateExplorerUI();
+    });
+  </script>
+</body>
+</html>
