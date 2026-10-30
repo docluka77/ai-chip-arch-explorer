@@ -62,7 +62,7 @@
   function tensorSvg(){let s=defs();
     s+=edge('M270 95H320V145')+edge('M270 260H320V220')+edge('M520 185H580')+edge('M450 335V275H665V250')+edge('M760 185H815')+edge('M895 250V320');
     s+=box(30,45,240,110,'smem','A tile / SMEM',['FP8 E4M3 激活','逻辑上 [M tile,K tile]']);
-    s+=box(30,210,240,110,'smem','W tile / SMEM',['FP4 值在 SMEM 展开','packed GMEM 字节数不同'],'amber');
+    s+=box(30,210,240,110,'smem','W tile / SMEM',['FP4 值在 SMEM 展开','packed GMEM byte数不同'],'amber');
     s+=box(320,90,200,200,'descriptor','共享内存描述符',['tile 起点 / stride','指令形状 / 数据类型','内部 swapAB','数学含义仍是 A × Wᵀ']);
     s+=box(580,100,180,150,'tensor','Tensor Core',['tcgen05.mma','block-scaled MMA','异步发射与执行']);
     s+=box(340,335,220,70,'scales','Scale / TMEM',[],'amber');

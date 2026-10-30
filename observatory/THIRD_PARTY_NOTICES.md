@@ -28,3 +28,9 @@ DeepInfer源码本身为Apache-2.0，DeepSeek模型仓库有独立MIT条款；�
 新增的动画、矩阵沙盘和模块图是项目原创教学表达。DeepInfer / DeepGEMM使用固定commit的公开实现作为事实依据；页面给出源码行号与可见性/架构边界。Python示例为形状准确的教学伪代码，未复制或分发第三方CUDA内核。Eyeriss / ShiDianNao论文、NVDLA官方文档、NVIDIA CUDA/CUTLASS/NCCL/网络文档和PyTorch文档以链接引用，相关原文及实现权利仍归各权利人。
 
 真实gate/up、缩小4×4矩阵、软件CTA tile与物理Tensor Core PE阵列分别说明。网络动画独立描述具备支持条件的数据中心路径，不承诺用户GPU、NIC或软件的实际兼容性。
+
+## 0.4 RDMA专题
+
+用户指定微信公众号文章仅作为研究入口，未复制全文、作者照片或新闻图片进网站。产品状态标为媒体披露，官方未公开的微架构不臆造。22篇论文与标准通过作者/会议/联盟原始入口引用，作者署名、关键图页与实验条件分别保留；未分发论文PDF。
+
+RDMA路径、SRNIC职责、packet示例、scale-up/out通信域及开销图均为原创教学重绘，不是物理floorplan或测得trace；原文、协议、第三方实现的权利独立适用。byte替换针对存储单位，ByteDance与新闻原文标题保持命名准确。
