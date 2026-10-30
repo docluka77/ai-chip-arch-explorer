@@ -1,3 +1,5 @@
+> 新增：[现代 AI 芯片架构观察室 0.2](observatory/) · 官方原图、GPU→SM 子分区、DeepSeek V4.1 Flash / DeepInfer。原 CNN / MAESTRO 页面保留。
+
 # AI 芯片架构与 MAESTRO 空间探索器
 
 一个单文件的交互式可视化页面，把经典 CNN 加速器（Eyeriss / ShiDianNao / NVDLA）的架构与数据流，

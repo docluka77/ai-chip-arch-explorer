@@ -1,0 +1,22 @@
+/* Additional case-study controls introduced in 0.2. */
+.intro-copy p,.view-head p,.chip-takeaway p,.official-guide p,.inspector p,.inspector .insight,.analysis-card p,.case-lead p,.case-step-info p,.case-point-grid p,.engine-mapping p,.plain-comparison .answer,.compare-profile p,.methodology p,.methodology li{color:#61768a}
+.stage-explainer,.layer-footnotes,.layer-selection-note,.lab-small,.notes-sidebar p,.case-official p{color:#6b8093}
+#architecture text,.case-svg-scroll svg text,#roofline text{fill:#5c7489}
+#architecture .node>text:first-of-type{fill:#365c78;font-weight:550}
+#architecture>text:first-of-type{fill:#365c78;font-weight:600}
+.case-svg-scroll svg g>text:first-of-type{fill:#426b89;font-weight:550}
+.official-image-frame img:focus-visible{outline:3px solid #719cbc;outline-offset:-4px}
+@media(max-width:1000px){.model-layer{padding:9px 7px}.model-layer b{font-size:13px}.model-layer span{font-size:8px}.engine-mapping article{gap:14px;padding:23px}.engine-mapping h3{font-size:18px}.engine-mapping p{font-size:13px}}
+@media(max-width:720px){
+ .layer-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin:19px 0 22px}
+ .model-layer{padding:9px 7px}.model-layer b{font-size:14px}.model-layer span{font-size:8px}
+ .layer-selection-note{font-size:13px}.layer-selection .lab-field>label{font-size:13px}
+ .engine-mapping article{grid-template-columns:25px 1fr;gap:9px 12px;padding:22px 18px}
+ .engine-mapping article>div:last-child{grid-column:2}.engine-mapping .mapping-arrow{grid-column:2;line-height:1;font-size:18px;transform:rotate(90deg);justify-self:start;margin:6px 0}
+ .engine-mapping h3{font-size:19px}.engine-mapping p{font-size:13px;line-height:1.95}.mapping-no{font-size:11px;align-self:start;padding-top:5px}
+ .schedule-lanes>div{grid-template-columns:42px 1fr;gap:8px;font-size:12px}.schedule-lanes span:last-child{grid-column:2}.schedule-lanes span{padding:11px 13px}
+ .case-source-bar{overflow-wrap:anywhere}.case-official{overflow:auto}
+ .figure-tabs button{white-space:normal;text-align:left}.official-header .official-kind{max-width:115px;white-space:normal}
+ .chip-takeaway .takeaway-heading{font-size:21px}.layer-footnotes{overflow-wrap:anywhere}
+}
+@media print{.official-gallery,.case-card{break-inside:avoid}.layer-nav,.case-tabs,.case-controls{display:none!important}main{margin:0;padding:0}.sidebar{display:none}.official-figure{padding:10px}.official-guide{font-size:12px}}

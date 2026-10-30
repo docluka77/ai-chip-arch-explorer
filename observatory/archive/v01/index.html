@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="沿着一个 token 的路径，理解 Groq、Google TPU、Taalas、NVIDIA、AMD 与中国自研 AI 芯片。可交互、可追溯、可持续修订的中文架构观察室。">
+  <meta name="theme-color" content="#152a28">
+  <title>芯片架构观察室 · AI Chip Observatory</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script src="data.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">跳到主要内容</a>
+  <aside class="sidebar">
+    <a class="brand" href="#explore"><img src="icon.svg" width="36" height="36" alt=""><span>芯片架构观察室<small>AI CHIP OBSERVATORY</small></span></a>
+    <div class="edition"><span class="live-dot"></span> 研究手记 <span>VOL. 01 / 2026</span></div>
+    <nav aria-label="主导航">
+      <a href="#explore" data-view="explore"><span>01</span> 架构解剖 <i>↗</i></a>
+      <a href="#compare" data-view="compare"><span>02</span> 并排对照 <i>↗</i></a>
+      <a href="#lab" data-view="lab"><span>03</span> 瓶颈实验 <i>↗</i></a>
+      <a href="#sources" data-view="sources"><span>04</span> 证据档案 <i>↗</i></a>
+      <a href="#notes" data-view="notes"><span>05</span> 我的笔记 <i>↗</i></a>
+    </nav>
+    <div class="rail-note"><span class="tiny-label">THE QUESTION</span><p>相同的模型，<br>为什么需要<br>不同的计算机？</p><div class="rail-grid" aria-hidden="true"></div></div>
+    <div class="sidebar-bottom"><a href="https://github.com/docluka77/ai-chip-arch-explorer" target="_blank" rel="noopener noreferrer">DOCLUKA77 <span>GitHub ↗</span></a><small>原创表达 · 保留权利<br>公开可读，复用须获授权</small></div>
+  </aside>
+  <main id="content">
+    <header class="topbar"><span>研究 / <b id="breadcrumb">架构解剖</b></span><div><span class="snapshot">资料快照 <time datetime="2026-10-30">2026.10.30</time></span><button id="share" class="text-button" title="复制当前架构与播放位置的链接">分享当前视角 ↗</button></div></header>
+    <section id="view-explore" class="view" aria-label="架构解剖">
+      <div class="intro"><div><div class="eyebrow"><span></span> FOLLOW THE DATA, UNDERSTAND THE CHIP</div><h1>算力的差别，<br>藏在<span>数据流</span>里。</h1></div><div class="intro-copy"><p>沿着一个 token 的路径，看计算、存储与互连<br class="desktop-br">如何塑造一颗 AI 芯片。</p><div class="intro-stats"><span><b>10</b> 架构视角</span><span><b>07</b> 厂商 / 团队</span><span class="verified"><i></i> 逐项关联来源</span></div></div></div>
+      <div class="section-heading"><h2>选择一颗芯片，拆开来看</h2><span class="muted">逻辑示意 · 非芯片实物布局</span></div>
+      <div id="chip-selector" class="chip-selector" role="group" aria-label="芯片选择"></div>
+      <div class="explorer-panel">
+        <div class="panel-top"><div><span id="chip-number" class="mono">01 / 10</span><h2 id="chip-title"></h2><span id="chip-badge" class="badge"></span></div><div class="segmented" aria-label="推理阶段"><button data-phase="decode" class="active" aria-pressed="true">Decode 逐 token</button><button data-phase="prefill" aria-pressed="false">Prefill 读提示词</button></div></div>
+        <div class="explorer-body"><div class="diagram-wrap"><div class="canvas-label"><span id="diagram-label"></span><span><i class="legend-dot"></i> 激活 / 中间结果 <i class="legend-dot amber"></i> 权重</span></div><svg id="architecture" viewBox="0 0 850 385" role="img" aria-labelledby="svg-title svg-desc"></svg><div class="canvas-footer"><span id="diagram-caption"></span><button id="export-svg" class="canvas-button">导出示意图 ↓</button></div></div><aside id="inspector" class="inspector" aria-live="polite"></aside></div>
+        <div class="transport"><button id="play" class="play-button" aria-label="播放数据流">▶</button><button id="step" class="step-button" aria-label="前进一步">▷|</button><div id="stages" class="stages" role="group" aria-label="数据流步骤"></div><label class="speed">速度 <select id="speed" aria-label="播放速度"><option value="1800">0.5×</option><option value="1000" selected>1×</option><option value="550">2×</option></select></label><span class="mono transport-count" id="stage-count"></span></div>
+      </div>
+      <div id="stage-explainer" class="stage-explainer" aria-live="polite"></div>
+      <div id="analysis-cards" class="analysis-grid"></div>
+      <div id="chip-evidence" class="evidence-strip"></div>
+      <div class="next-step"><div><span class="eyebrow">NEXT / CHANGE ONE VARIABLE</span><h3>再快的核心，也可能在等数据。</h3><p>改变 batch 与精度，看同一个模型的瓶颈如何移动。</p></div><a href="#lab" class="primary-link">进入瓶颈实验 <span>↗</span></a></div>
+    </section>
+    <section id="view-compare" class="view" hidden aria-label="并排对照"></section>
+    <section id="view-lab" class="view" hidden aria-label="瓶颈实验"></section>
+    <section id="view-sources" class="view" hidden aria-label="证据档案"></section>
+    <section id="view-notes" class="view" hidden aria-label="我的笔记"></section>
+    <footer><span>AI CHIP OBSERVATORY <span class="footer-dash">/</span> A LIVING RESEARCH NOTE</span><span>© 2026 DOCLUKA77 · 原创代码与表达保留所有权利 · <a href="LICENSE.txt" target="_blank" rel="noopener noreferrer">许可说明 ↗</a></span></footer>
+  </main>
+  <div id="toast" class="toast" role="status"></div>
+  <dialog id="source-dialog"><button id="close-dialog" class="close-dialog" aria-label="关闭">×</button><div id="dialog-content"></div></dialog>
+  <noscript><p>本页面需要启用 JavaScript 才能操作架构图。来源与许可请查看项目 README。</p></noscript>
+</body>
+</html>

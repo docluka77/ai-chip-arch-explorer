@@ -1,0 +1,78 @@
+[
+  {
+    "sourceUrl": "https://images.nvidia.com/aem-dam/Solutions/geforce/blackwell/nvidia-rtx-blackwell-gpu-architecture.pdf",
+    "pdfPage": 8,
+    "zeroIndex": 7,
+    "figure": 3,
+    "input": "rtx-blackwell-page-08.png",
+    "output": "rtx-blackwell-page-08-figure.webp",
+    "crop": {
+      "left": 126,
+      "top": 830,
+      "width": 1330,
+      "height": 530
+    },
+    "method": "Rectangular crop, lossless WebP, figure caption retained; no wording/structure changes."
+  },
+  {
+    "sourceUrl": "https://images.nvidia.com/aem-dam/Solutions/geforce/blackwell/nvidia-rtx-blackwell-gpu-architecture.pdf",
+    "pdfPage": 9,
+    "zeroIndex": 8,
+    "figure": 4,
+    "input": "rtx-blackwell-page-09.png",
+    "output": "rtx-blackwell-page-09-figure.webp",
+    "crop": {
+      "left": 126,
+      "top": 380,
+      "width": 1300,
+      "height": 920
+    },
+    "method": "Rectangular crop, lossless WebP, figure caption retained; no wording/structure changes."
+  },
+  {
+    "sourceUrl": "https://images.nvidia.com/aem-dam/Solutions/geforce/blackwell/nvidia-rtx-blackwell-gpu-architecture.pdf",
+    "pdfPage": 11,
+    "zeroIndex": 10,
+    "figure": 5,
+    "input": "rtx-blackwell-page-11.png",
+    "output": "rtx-blackwell-page-11-figure.webp",
+    "crop": {
+      "left": 126,
+      "top": 145,
+      "width": 930,
+      "height": 1570
+    },
+    "method": "Rectangular crop, lossless WebP, figure caption retained; no wording/structure changes."
+  },
+  {
+    "sourceUrl": "https://images.nvidia.com/aem-dam/Solutions/geforce/blackwell/nvidia-rtx-blackwell-gpu-architecture.pdf",
+    "pdfPage": 12,
+    "zeroIndex": 11,
+    "figure": 6,
+    "input": "rtx-blackwell-page-12.png",
+    "output": "rtx-blackwell-page-12-figure.webp",
+    "crop": {
+      "left": 126,
+      "top": 440,
+      "width": 1300,
+      "height": 950
+    },
+    "method": "Rectangular crop, lossless WebP, figure caption retained; no wording/structure changes."
+  },
+  {
+    "sourceUrl": "https://www.amd.com/content/dam/amd/en/documents/products/graphics/radeon/amd-radeon-rx-9000-series-keynote.pdf",
+    "pdfPage": 8,
+    "zeroIndex": 7,
+    "input": "rdna4-keynote-page-08.png",
+    "output": "rdna4-keynote-page-08-figure.webp",
+    "method": "Complete original slide retained, lossless WebP; no cropping or text/structure changes."
+  },
+  {
+    "sourceUrl": "https://www.amd.com/content/dam/amd/en/documents/products/graphics/radeon/amd-radeon-rx-9000-series-keynote.pdf",
+    "pdfPage": 10,
+    "zeroIndex": 9,
+    "input": "rdna4-keynote-page-10.png",
+    "output": "rdna4-keynote-page-10-figure.webp",
+    "method": "Complete original slide retained, lossless WebP; no cropping or text/structure changes."
+  }
+]
