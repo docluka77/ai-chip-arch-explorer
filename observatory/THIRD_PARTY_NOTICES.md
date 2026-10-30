@@ -22,3 +22,9 @@ Noto Sans SC来自Google Fonts官方仓库，采用SIL Open Font License 1.1。�
 DeepInfer源码本身为Apache-2.0，DeepSeek模型仓库有独立MIT条款；本项目未复制其实现，不对其重新授权。NVIDIA、AMD、Google、Groq、Taalas、Alibaba、ByteDance、DeepSeek及其产品名归各权利人。项目没有厂商背书。
 
 网站不加载第三方运行时脚本或统计服务；仅官方远程图和资料外链需要联网。旧0.1按原样归档，保留其历史资料日期。
+
+## 0.3 算子与集群资料
+
+新增的动画、矩阵沙盘和模块图是项目原创教学表达。DeepInfer / DeepGEMM使用固定commit的公开实现作为事实依据；页面给出源码行号与可见性/架构边界。Python示例为形状准确的教学伪代码，未复制或分发第三方CUDA内核。Eyeriss / ShiDianNao论文、NVDLA官方文档、NVIDIA CUDA/CUTLASS/NCCL/网络文档和PyTorch文档以链接引用，相关原文及实现权利仍归各权利人。
+
+真实gate/up、缩小4×4矩阵、软件CTA tile与物理Tensor Core PE阵列分别说明。网络动画独立描述具备支持条件的数据中心路径，不承诺用户GPU、NIC或软件的实际兼容性。

@@ -1,4 +1,4 @@
-> 新增：[现代 AI 芯片架构观察室 0.2](observatory/) · 官方原图、GPU→SM 子分区、DeepSeek V4.1 Flash / DeepInfer。原 CNN / MAESTRO 页面保留。
+> 新增：[现代 AI 芯片架构观察室 0.3.0](observatory/) · DeepSeek算子执行显微镜、GPU/SM/Tensor Core、PE复用与TCP/IP/RDMA。原CNN / MAESTRO页面保留。
 
 # AI 芯片架构与 MAESTRO 空间探索器
 

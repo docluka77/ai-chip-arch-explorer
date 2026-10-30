@@ -14,16 +14,22 @@
   <script src="research-data.js" defer></script>
   <script src="layers.js" defer></script>
   <script src="case-study.js" defer></script>
+  <link rel="stylesheet" href="operator.css">
+  <script src="operator-data.js" defer></script>
+  <script src="operator-provenance.js" defer></script>
+  <script src="operator-context.js" defer></script>
+  <script src="operator.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#content">跳到主要内容</a>
   <aside class="sidebar">
     <a class="brand" href="#explore"><img src="icon.svg" width="36" height="36" alt=""><span>芯片架构观察室<small>AI CHIP OBSERVATORY</small></span></a>
-    <div class="edition"><span class="live-dot"></span> 研究手记 <span>VOL. 02 / 2026</span></div>
+    <div class="edition"><span class="live-dot"></span> 研究手记 <span>VOL. 03 / 2026</span></div>
     <nav aria-label="主导航">
       <a href="#explore" data-view="explore"><span>01</span> 从原图拆芯片 <i>↗</i></a>
       <a href="#case" data-view="case"><span>02</span> DeepSeek 怎么跑 <i>↗</i></a>
+      <a href="#operator" data-view="operator" class="nav-sub" title="算子执行显微镜" aria-label="02 算子执行显微镜"><span>↳</span> 算子执行显微镜 <i>↗</i></a>
       <a href="#lab" data-view="lab"><span>03</span> 瓶颈实验 <i>↗</i></a>
       <a href="#compare" data-view="compare"><span>04</span> 看懂设计差异 <i>↗</i></a>
       <a href="#sources" data-view="sources"><span>05</span> 原始资料 <i>↗</i></a>
@@ -36,6 +42,7 @@
     <header class="topbar"><span>研究 / <b id="breadcrumb">架构解剖</b></span><div><span class="snapshot">资料快照 <time datetime="2026-10-30">2026.10.30</time></span><button id="share" class="text-button" title="复制当前架构与播放位置的链接">分享当前视角 ↗</button></div></header>
     <section id="view-explore" class="view" aria-label="架构解剖">
       <div class="intro"><div><div class="eyebrow"><span></span> START WITH THE ORIGINAL, GO ONE LEVEL DEEPER</div><h1>从官方原图，<br>拆进<span>一颗芯片</span>。</h1></div><div class="intro-copy"><p>先看原图，再沿着 GPU → GPC → TPC → SM<br class="desktop-br">逐层展开。每一层都标明资料与公开边界。</p><a class="start-guide" href="#case">已经认识硬件？用 DeepSeek 看一次完整推理 ↗</a></div></div>
+      <a class="op-entry-link" href="#operator">英伟达再深入：用 DeepSeek 算子，跟踪 Python → 显存 → SM → Tensor Core ↗</a>
       <div class="section-heading"><h2>选择研究对象</h2><span class="muted">推荐从细节完整的 RTX Blackwell 开始</span></div>
       <div id="chip-selector" class="chip-selector" role="group" aria-label="芯片选择"></div>
       <div id="chip-takeaway" class="chip-takeaway"></div>
@@ -55,6 +62,7 @@
       <div class="next-step"><div><span class="eyebrow">NEXT / CHANGE ONE VARIABLE</span><h3>再快的核心，也可能在等数据。</h3><p>改变 batch 与精度，看同一个模型的瓶颈如何移动。</p></div><a href="#lab" class="primary-link">进入瓶颈实验 <span>↗</span></a></div>
     </section>
     <section id="view-case" class="view" hidden aria-label="DeepSeek 推理案例"></section>
+    <section id="view-operator" class="view" hidden aria-label="算子执行显微镜"></section>
     <section id="view-compare" class="view" hidden aria-label="并排对照"></section>
     <section id="view-lab" class="view" hidden aria-label="瓶颈实验"></section>
     <section id="view-sources" class="view" hidden aria-label="证据档案"></section>
@@ -64,6 +72,7 @@
   <div id="toast" class="toast" role="status"></div>
   <dialog id="source-dialog"><button id="close-dialog" class="close-dialog" aria-label="关闭">×</button><div id="dialog-content"></div></dialog>
   <dialog id="figure-dialog" class="figure-dialog"><button id="close-figure" class="close-dialog" aria-label="关闭原图">×</button><div id="figure-dialog-content"></div></dialog>
+  <dialog id="op-module-dialog" class="op-detail" aria-label="算子模块细节"><button id="op-module-close" class="close-dialog" aria-label="关闭模块细节">×</button><div id="op-module-content"></div></dialog>
   <noscript><p>本页面需要启用 JavaScript 才能操作架构图。来源与许可请查看项目 README。</p></noscript>
 </body>
 </html>

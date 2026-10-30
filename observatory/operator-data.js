@@ -1,0 +1,64 @@
+/* © 2026 DOCLUKA77. Original educational traces; never a measured GPU trace. */
+'use strict';
+(() => {
+  const A=[[1,2,0,1],[0,1,3,2],[2,0,1,1],[1,1,1,1]];
+  // W is [N,K], matching the logical NT GEMM. Columns 0/1 of C are gates.
+  const W=[[2,0,1,1],[0,1,2,1],[1,1,0,2],[1,0,1,2]];
+  const dot=(m,n,k=4)=>A[m].slice(0,k).reduce((s,a,i)=>s+a*W[n][i],0);
+  const sources=[
+    {id:'op-mlp',title:'DeepInfer：实际专家 MLP 调用',publisher:'DeepSeek',date:'fixed 5537415',type:'code',url:'https://github.com/deepseek-ai/DeepInfer/blob/553741557a57df44a46fb3ab72b6aafeaf945337/deepinfer/model_executor/layers/mlp.py',supports:'gate/up、SwiGLU、down 与非融合 grouped GEMM 路径。',limit:'固定版本代码；mega_moe 是另一条融合路径，图中不声称所有请求都经过独立 kernel。'},
+    {id:'op-gemm',title:'DeepGEMM：DeepInfer 固定依赖版本',publisher:'DeepSeek',date:'fixed 1fc9c66',type:'code',url:'https://github.com/deepseek-ai/DeepGEMM/tree/1fc9c66975ee322d628b3288534ca0e9ce12a64d',supports:'FP8 × FP4 grouped GEMM 的 SM100 分支与实现。',limit:'实际 tile、调度与单/双 CTA 配置由内核选择；教学图不替代 profiler trace。'},
+    {id:'op-cutlass',title:'NVIDIA：SM100 TMA / Tensor Memory 示例',publisher:'NVIDIA',date:'reviewed 2026-10-30',type:'code',url:'https://github.com/NVIDIA/cutlass/blob/main/examples/cute/tutorial/blackwell/03_mma_tma_multicast_sm100.cu',supports:'TMA、SMEM、tcgen05、TMEM 与寄存器的职责。',limit:'用作 ISA/存储空间解释，不把 CUTLASS 示例说成 DeepInfer 内核。'},
+    {id:'op-tcgen',title:'NVIDIA：tcgen05 编程模型',publisher:'NVIDIA',date:'CUTLASS 4.5.2',type:'technical',url:'https://docs.nvidia.com/cutlass/4.5.2/media/docs/pythonDSL/mma_docs/tcgen05_programming.html',supports:'SM100 MMA 通过描述符读操作数，结果累加在 TMEM。',limit:'软件可见的指令 tile 不等于物理乘法器阵列。'},
+    {id:'op-sm120',title:'NVIDIA：GeForce Blackwell SM120 GEMM',publisher:'NVIDIA',date:'reviewed 2026-10-30',type:'code',url:'https://github.com/NVIDIA/cutlass/tree/main/examples/79_blackwell_geforce_gemm',supports:'RTX 50 系列与 SM100 的指令、寄存器及 cluster 路径差异。',limit:'独立 CUTLASS 示例；不声称 DeepInfer 的 SM100 分支支持 RTX 5090。'},
+    {id:'op-cuda',title:'NVIDIA：CUDA 异步拷贝与执行模型',publisher:'NVIDIA',date:'reviewed 2026-10-30',type:'technical',url:'https://docs.nvidia.com/cuda/cuda-c-programming-guide/',supports:'CPU 发起、GPU 异步执行，CTA/warp 与共享内存的基本语义。',limit:'Python 一行不等于一条 GPU 指令；图中时间为教学节奏。'},
+    {id:'op-gdr',title:'NVIDIA：GPUDirect RDMA',publisher:'NVIDIA',date:'reviewed 2026-10-30',type:'technical',url:'https://docs.nvidia.com/cuda/gpudirect-rdma/',supports:'GPU 与第三方 PCIe 设备交换数据、内存注册和拓扑约束。',limit:'需要硬件/驱动/拓扑支持；RDMA 完成与 GPU 可见性仍需正确排序。'},
+    {id:'op-nccl',title:'NVIDIA：NCCL 网络与拓扑',publisher:'NVIDIA',date:'reviewed 2026-10-30',type:'technical',url:'https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/troubleshooting.html',supports:'IB/RoCE 网络、IP socket 回退与 GPU-NIC 路径。',limit:'真实传输由配置和拓扑选择；不保证每次都使用 GPUDirect。'},
+    {id:'op-torch',title:'PyTorch：all_to_all_single',publisher:'PyTorch',date:'reviewed 2026-10-30',type:'technical',url:'https://docs.pytorch.org/docs/stable/distributed.html#torch.distributed.all_to_all_single',supports:'Python 层按 rank 交换不同分片的 collective 语义。',limit:'解释通信语义，不宣称它就是 DeepEP 内部实现。'}
+  ];
+  const steps=[
+    {id:'python',title:'Python：先确定要算什么',short:'Python',focus:'python',level:'gpu',code:0,path:'host',k:0,verb:'一个本地专家，收到 Mₑ 个 token。',body:'真实逻辑形状为 A[Mₑ,5120] × W_gate_up[4608,5120]ᵀ → C[Mₑ,4608]。4608=2×2304，输出会分成 gate 与 up。这里只展开非融合的 grouped GEMM 路径。',state:['激活：已按专家重排','权重：通常已在显存中','尚未把 Python 数据逐字节搬到 SM'],why:'专家并行决定 token 去哪块 GPU；本页从 token 已到本地专家开始。'},
+    {id:'quant',title:'量化与布局：数据之外还有 scale',short:'数据格式',focus:'scales',level:'gpu',code:1,path:'host',k:0,verb:'把逻辑矩阵变成内核能读取的格式。',body:'此分支使用 FP8 激活和 FP4 专家权重，并传递各自的缩放因子及 grouped 布局元数据。低位宽的整数图样必须结合 scale 才能恢复数值；本例缩小矩阵把 scale 固定为 1。',state:['A：FP8 + scale','W：FP4 + scale','group 布局：标出专家对应区间'],why:'量化节约存储与流量，但也增加缩放因子搬运和专门的数据布局。'},
+    {id:'launch',title:'CUDA：发射一个有分工的 kernel',short:'Kernel',focus:'scheduler',level:'sm',code:2,path:'launch',k:0,verb:'CPU 提交任务，GPU 调度 CTA。',body:'Python 包装层选择/生成专用内核并发射。CTA 是线程块，warp 是 32 个线程的调度分组。producer、MMA 发射与 epilogue 是软件角色；图中的角色框不代表真实 warp 数量。',state:['CPU：提交后可继续调度','GPU：执行已排队的工作','CTA：合作处理输出 tile'],why:'不是 Python 每做一次乘加就调用一次驱动；一个发射覆盖大量并行工作。'},
+    {id:'tma',title:'TMA：先发射异步 tile 拷贝',short:'TMA 发射',focus:'tma',level:'sm',code:3,path:'issue',k:0,verb:'producer 等到空缓冲，再提交张量搬运。',body:'选中的 producer 线程根据张量描述符发射 global → shared 拷贝。描述符指定地址、stride与布局。指令发出后，内存系统才服务这次请求；此时不能把 A/B 当成已经到达的共享内存数据。',state:['输入缓冲：可安全写入','描述符：地址 / stride / 布局','异步请求已发射，尚未完成'],why:'发射控制请求与数据真正到齐是两个时刻；producer不必逐元素搬运。'},
+    {id:'l2',title:'响应请求：HBM / L2 → 共享内存',short:'HBM → SMEM',focus:'l2',level:'gpu',code:3,path:'fetch',k:0,verb:'已发射的 TMA 请求，取回需要的 A/W tile。',body:'L2命中可直接服务请求；本动画选择“该tile未命中”的情境，才显示HBM取数。TMA将tile送入共享内存，A/B无需先经过每个线程的普通寄存器。不是每次GEMM都从HBM重新读取全部权重。',state:['示例：L2 miss','A / W tile → SMEM','权重可在多个token间复用'],why:'大容量显存解决放得下；缓存与片上分块复用帮助减少反复搬运。'},
+    {id:'ready',title:'mbarrier：数据真正到齐，才能使用',short:'等待就绪',focus:'barrier',level:'sm',code:4,path:'ready',k:0,verb:'consumer 检查这一阶段的完成条件。',body:'异步指令已经发出，不代表数据已经可读。事务屏障让 consumer 等待对应共享内存阶段的搬运完成，并用 phase 区分循环使用的缓冲区。',state:['SMEM：当前 tile 就绪','屏障：对应阶段完成','下一阶段仍可预取'],why:'生产者和消费者需要明确交接；仅靠“程序看起来写在前面”不够。'},
+    {id:'scales',title:'缩放因子：另一条进入 TMEM 的路径',short:'Scale / TMEM',focus:'scales',level:'tensor',code:5,path:'scale',k:0,verb:'数据 tile 与缩放 tile 共同定义实际数值。',body:'所选 DeepGEMM SM100 实现把 scale 从共享内存通过 UTCCP 复制到 Tensor Memory。tcgen05 的 block-scaled MMA 使用这些 scale；TMEM 中的 scale 区与 FP32 累加区承担不同职责。',state:['A/B：仍在共享内存','scale：准备到 TMEM','累加区：另行分配'],why:'不能把“4 bit × 8 bit”解释成脱离缩放因子的普通整数乘法。'},
+    ...[0,1,2,3].map(k=>({id:'mma'+k,title:`Tensor Core：累加第 ${k+1} 个 K 分片`,short:`MMA ${k+1}/4`,focus:'tensor',level:'tensor',code:6,path:'mma',k:k+1,verb:'C ← C + A[:,k] × W[:,k]ᵀ',body:'tcgen05.mma 使用共享内存描述符访问 A/B，使用缩放因子，并把 FP32 中间结果累加在 TMEM。右边的 4×4 是可手算的数学缩小模型；这里每次只展开一个 k，真实 MMA 一次处理更大的指令 tile。',state:[`已累计 ${k+1}/4 个教学 K 分片`,'A/B 主操作数：SMEM','FP32 累加：TMEM'],why:k===0?'一次加载的 tile 供多次乘加复用，避免对每个输出重新访问显存。':'观察选中 C[m,n] 的四个乘积怎样相加，而不是把格子当成物理 PE。'})),
+    {id:'done',title:'MMA 完成：等待异步计算的结果',short:'完成屏障',focus:'barrier',level:'tensor',code:7,path:'mma-done',k:4,verb:'提交完成通知并等待，才开始读累加区。',body:'MMA 发射与完成也有先后区别。完成屏障与相应的线程/异步内存排序保护后续 TMEM 读取。示意将依赖展开为单条主线；实际 kernel 会多缓冲、流水重叠，并可能使用双 CTA 协作。',state:['四个教学分片已累计','TMEM：C tile 完成','缓冲区复用受依赖保护'],why:'先计算后读取必须由真实同步语义保证，不能用动画相邻两帧替代。'},
+    {id:'epilogue',title:'Epilogue：TMEM → 寄存器 → 共享内存',short:'Epilogue',focus:'registers',level:'sm',code:8,path:'epilogue',k:4,verb:'输出线程读回 FP32 结果，再转换/重排。',body:'这个内核的 epilogue 从 TMEM 取回累加值到线程寄存器，转换成 BF16 并放到输出共享内存缓冲。寄存器是线程的局部状态，TMEM 是矩阵指令使用的另一种存储，二者不能画成同一个盒子。',state:['FP32：TMEM → 寄存器','转换为 BF16','BF16 输出 tile → SMEM'],why:'矩阵核心擅长乘加；类型转换、地址计算、激活等还需要其他执行资源。'},
+    {id:'store',title:'写回：TMA store 输出到全局内存',short:'写回',focus:'output',level:'gpu',code:9,path:'store',k:4,verb:'共享内存输出缓冲 → global C。',body:'所选 SM100 实现用 TMA store 把输出 tile 写入全局地址空间，并等待相关存储完成后再安全复用缓冲。全局存储可以经过缓存；图中 HBM 输出表示最终的显存驻留结果，不表示每条 store 都立即物理写入 HBM。',state:['C[Mₑ,4608]：BF16','输出按全局地址可寻址','缓存回写时机不在动画中建模'],why:'全局内存是下个 kernel 看见的接口；缓存、可见性与 stream 依赖仍需正确管理。'},
+    {id:'swiglu',title:'SwiGLU：gate 与 up 合成中间激活',short:'SwiGLU',focus:'vector',level:'sm',code:10,path:'activation',k:4,verb:'Y = SiLU(gate) ⊙ up，输出宽度 2304。',body:'后续激活/量化内核将 gate/up 分开并计算 SwiGLU，准备 down 投影的输入。这里只展开这次 gate/up GEMM，不把专家完整 MLP、MoE combine 或最终 token 都归给一次 Tensor Core 计算。',state:['gate：前 2304 个通道','up：后 2304 个通道','下一步：down 投影 → combine'],why:'复杂模型是矩阵、向量、通信和调度的组合；Tensor Core 不负责全部计算。'}
+  ];
+  const modules={
+    python:{name:'Python / 框架调用',where:'CPU 上的软件控制路径',summary:'提出张量运算、选内核、提交到 CUDA stream。',details:['示例从已经重排到本地专家的 token 开始。权重通常已经驻留在显存；没有隐含一次全模型 CPU → GPU 上传。','PyTorch 张量描述 dtype、shape、stride 和 device。Python 对象本身不是送入 Tensor Core 的数据。','CUDA 操作通常相对 CPU 异步；调试时 synchronize 会改变等待位置。'],refs:['op-mlp','op-cuda'],next:'scheduler'},
+    hbm:{name:'HBM / 全局内存',where:'B200 封装上的高带宽显存',summary:'存放完整专家权重、激活及中间结果的大容量空间。',details:['global 是 CUDA 地址空间语义，HBM 是物理存储。请求可能由 L2 服务，二者不应完全画等号。','激活 A 和权重 W 按 tile 取入片上；相同权重可为多个 token 重用。','本页选择 B200 SM100，显存名称是 HBM；01 的 RTX 5090 对应 GDDR7。'],refs:['op-gemm','op-cuda'],next:'l2'},
+    l2:{name:'L2 / 缓存与内存分区',where:'GPU 上，跨多个 SM 服务全局访问',summary:'在显存和 SM 请求之间保存可复用的数据。',details:['示意明确选择一次缓存未命中，才展示从 HBM 取回。真实命中率取决于工作集、布局和并发。','L2 不等于软件显式分配的共享内存。内核可以安排 tile 的工作集，但不直接把任意 C 数组“放进 L2”。','画出的箭头表达数据依赖，不表达总线数量、物理 floorplan 或精确带宽。'],refs:['op-cuda','op-gemm'],next:'tma'},
+    scheduler:{name:'CTA / warp / 发射角色',where:'SM 内的执行与调度组织',summary:'大量线程合作，一些角色搬数据，一些发射矩阵计算，一些处理输出。',details:['warp 是 32 个 CUDA 线程；CTA 可以包含多个 warp，共享同一个线程块的 shared memory 和同步资源。','tcgen05 矩阵计算由符合约束的发射线程提交，不是“32 个 lane 各自一个独立 Tensor Core”。','本页把 producer、MMA issue、epilogue 分开画以解释职责；实际 warp 配置、swapAB、单/双 CTA 由内核决定。'],refs:['op-gemm','op-tcgen'],next:'tma'},
+    tma:{name:'TMA / 张量搬运',where:'SM 的异步数据搬运机制',summary:'按张量描述符，把全局内存的 tile 搬入 shared memory。',details:['描述符编码基址、维度、stride 和布局等信息，减少逐线程地址生成与搬运指令。','TMA 发射后，producer 可去处理其他工作；consumer 仍须等待正确的就绪条件。','TMA 不是缓存，也不是 Tensor Core。SM120 也有 TMA，但这不意味着它支持 SM100 的 tcgen05/TMEM 路径。'],refs:['op-cutlass','op-sm120'],next:'smem'},
+    smem:{name:'SMEM / 共享内存缓冲',where:'SM 内，合作 CTA 可编程使用的局部存储',summary:'将 A/B tile 放在靠近计算的位置，反复消费。',details:['多阶段缓冲让“搬下一块”和“算当前块”重叠；屏障记录每个阶段是否可读/可复用。','swizzle、对齐与 stride 决定内核怎样描述 tile。它们是数据布局，不是多一份模型数学。','选中的 SM100 GEMM 从这里提供主操作数，也用共享内存暂存 epilogue 输出供 TMA store。'],refs:['op-gemm','op-cutlass'],next:'barrier'},
+    barrier:{name:'mbarrier / 阶段依赖',where:'CUDA 异步执行与合作线程的交接点',summary:'区分“已发射”“数据已到齐”“计算已完成”。',details:['TMA 搬运有自己的完成条件，异步 MMA 也有自己的完成条件；等待其中一个不自动代替另一个。','缓冲循环使用时以 phase 区分新旧阶段，避免 producer 覆盖 consumer 尚未用完的数据。','真实实现包含更细的 fence、commit 和等待顺序；本动画只解释源码中明确的依赖，不提供可直接粘贴运行的 PTX。'],refs:['op-gemm','op-cutlass'],next:'tensor'},
+    scales:{name:'缩放因子 / block scaling',where:'SMEM → UTCCP → TMEM 的独立数据',summary:'低位宽数值的解释信息，也要被布局、搬运和消费。',details:['逻辑上，一段的真实值由低精度表示和相应 scale 共同决定。scale 可能分组而不是每个元素一个。','这个固定实现使用专门的 scale layout，并复制到 TMEM 供 block-scaled MMA 使用。不能从概念图推断 scale 的存储字节数。','下方 4×4 沙盘故意取 scale=1、可精确表示的小数值，仅解释乘加依赖；不仿真量化误差或实际 scale 编码。'],refs:['op-gemm','op-tcgen'],next:'tensor'},
+    descriptor:{name:'共享内存 / MMA 描述符',where:'SM100 指令接口中的软件可见信息',summary:'告诉矩阵指令去哪里取 tile，以及按哪种类型与布局解释。',details:['SMEM描述符不是把整个矩阵复制进一个寄存器，而是编码共享内存tile的位置、步进与布局信息。','MMA指令还需要描述类型和形状等信息。内核的swapAB同时调整操作数描述符、scale地址和输出重排，用户看到的A×Wᵀ含义不变。','正确布局还需满足对齐与swizzle约束。页面解释语义；精确字段打包与合法组合以链接中的固定内核和官方指令文档为准。'],refs:['op-gemm','op-tcgen'],next:'tensor'},
+    tensor:{name:'Tensor Core / tcgen05 MMA',where:'SM100 的矩阵乘加执行资源',summary:'按指令 tile 做 D=A×B+C；输入描述符与累加存储各有约束。',details:['所选路径：A/B 主操作数由 SMEM 描述符描述；缩放因子和 FP32 累加结果使用 TMEM。','指令形状、软件 CTA tile、数学矩阵大小、物理乘法器阵列是四个不同层次。公开接口无法还原内部 PE 的全部布线。','4×4 图中的每个格子是一个可选择的数学输出 C[m,n]；不是一颗真实 Tensor Core 的 16 个 PE。'],refs:['op-gemm','op-tcgen'],next:'tmem'},
+    tmem:{name:'TMEM / Tensor Memory',where:'SM100 的专用矩阵存储空间',summary:'保存矩阵累加结果，也可按指令路径放 scale 等数据。',details:['不同于 CUDA 普通 per-thread 寄存器，也不是 CUDA global memory。内核先分配并管理对应地址/列。','本例连续 MMA 累加在这里，epilogue 才用 tcgen05.ld 读回线程寄存器。','这条 TMEM 路径属于本页选择的 SM100 实现，不移植到 RTX 5090 的 SM120 示意中。'],refs:['op-tcgen','op-gemm'],next:'registers'},
+    registers:{name:'寄存器 / epilogue 线程',where:'SM 内，线程各自的局部状态',summary:'读取累加值，转换、重排，再把输出写到 shared buffer。',details:['所选 SM100 内核：TMEM → registers → BF16 → shared output buffer → TMA store。','这些值分布给执行 epilogue 的线程。逻辑矩阵的第 m 行不等于某个 warp 的第 m 个 lane。','SM120 路径更依赖寄存器中的 MMA 操作数/累加器；应分别查对应指令的 lane 映射。'],refs:['op-gemm','op-sm120'],next:'output'},
+    output:{name:'全局输出 / TMA store',where:'shared output buffer → 全局 C 张量',summary:'让后续激活/投影 kernel 读取 BF16 结果。',details:['TMA store 本身也是异步操作，必须遵守输出缓冲的可见性、提交和复用规则。','全局写经过存储层次；图中的 HBM 结果表示显存驻留张量的归属，不逐周期模拟 L2 回写。','这是 gate/up 的中间输出；还需 SwiGLU、down projection 和专家加权合并。'],refs:['op-gemm','op-mlp'],next:'vector'},
+    vector:{name:'向量 / 激活与下一层',where:'SM 的通用执行资源及后续 kernel',summary:'把 gate/up 分开，做 SiLU 和逐元素乘法。',details:['SiLU(g)=g/(1+exp(−g))；SwiGLU=SiLU(gate)⊙up。真实中间宽度为2304。','激活、量化、寻址等不因为模型用了 Tensor Core 就消失。软件可将某些工作融合，降低中间流量。','本动画展示公开的分解路径。mega_moe 融合路径不应被错误解释为同样多次独立读写。'],refs:['op-mlp','op-gemm'],next:'python'}
+  };
+  const python=[
+    'x_local = dispatch_result   # 已到本地专家；不是CPU上传权重',
+    'a_fp8, a_scale = quantize_and_layout(x_local)',
+    'grouped_gemm((a_fp8, a_scale), (w_fp4, w_scale), out, groups)',
+    '# GPU: TMA load → shared A / W tiles',
+    '# GPU: wait current buffer phase / mbarrier',
+    '# GPU: scale layout → UTCCP → TMEM',
+    '# GPU: tcgen05 MMA → FP32 accumulator in TMEM',
+    '# GPU: wait MMA completion before consuming accumulator',
+    '# GPU: TMEM → registers → BF16 → shared output',
+    '# GPU: TMA store → global gate/up tensor',
+    'y = silu(gate) * up   # 再量化、down投影、combine'
+  ];
+  window.OBS_OPERATOR_DATA={version:'0.3',reviewed:'2026-10-30',A,W,dot,steps,modules,python,sources};
+  for(const s of sources)if(!window.OBS_DATA.sources.some(v=>v.id===s.id))window.OBS_DATA.sources.push(s);
+})();
