@@ -1,10 +1,10 @@
-# 现代 AI 芯片架构观察室 0.4
+# 现代 AI 芯片架构观察室 0.5
 
 从官方原图，逐层拆到计算单元内部。原仓库的 CNN / MAESTRO 页面继续保留在根目录，本目录提供新的独立界面。
 
 在线入口：[芯片架构观察室](https://docluka77.github.io/ai-chip-arch-explorer/observatory/)。直接打开本目录 index.html 也能阅读，不需要安装或构建。官方远程图片与资料链接需要联网。
 
-新增：[07 RDMA与集群互连](https://docluka77.github.io/ai-chip-arch-explorer/observatory/?v=0.4#rdma) · 22篇论文，SRNIC模块，有损/乱序，scale-up/out与开销实验。
+新增：[07 RDMA与集群互连](https://docluka77.github.io/ai-chip-arch-explorer/observatory/?v=0.5#rdma) · 4张原论文图、6组图解模型，22篇论文，SRNIC模块，有损/乱序，scale-up/out与开销实验。
 
 新入口：[算子执行显微镜](https://docluka77.github.io/ai-chip-arch-explorer/observatory/#operator)。克隆仓库后，在本目录运行 `node scripts/serve.mjs` 预览，运行 `node scripts/check-all.mjs` 核对语法、矩阵结果、形状/数据格式和来源契约；不需要安装依赖。
 
@@ -30,6 +30,7 @@
 - operator.css：显微镜排版与手机阅读。
 - rdma-data.js：RDMA依赖、模块、丢包教学和单位明确的开销公式。
 - rdma-evidence.js：22篇论文的作者/机制/实验/图页，以及官方标准与产品公开边界。
+- rdma-visuals.js / rdma-visuals.css：按文档流布局的架构模型、原图与放大查看。
 - rdma.js / rdma.css：07专题交互、动画、筛选阅读、开销实验及响应布局。
 - app.js：应用交互、对照、实验、笔记、深链接。
 - theme.css / responsive.css：新版浅色主题、大字号及手机阅读。

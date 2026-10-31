@@ -1,0 +1,142 @@
+{
+  "sourceUrl": "https://www.usenix.org/system/files/nsdi23-wang-zilong.pdf",
+  "sourcePageUrl": "https://www.usenix.org/conference/nsdi23/presentation/wang-zilong",
+  "authorLabel": "Zilong Wang et al. (21 authors; full list in original PDF)",
+  "conference": "NSDI 2023, April 17-19, 2023",
+  "copyright": {
+    "owner": "Authors or their employer; USENIX holds collective-volume rights.",
+    "policyUrl": "https://www.usenix.org/sites/default/files/nsdi23_title-organizers.pdf#page=2",
+    "policyPage": 2,
+    "policySummary": "NSDI23 front matter allows noncommercial reproduction of the complete work for educational/research purposes and retains individual-paper rights with authors/employers.",
+    "excerptLicense": "No explicit CC licence or separate blanket figure-excerpt redistribution licence located. This record does not assert that the website owns/relicenses these images.",
+    "explicitProhibitionLocated": false,
+    "recommendedPublicTreatment": "Use only figure excerpts necessary for the surrounding critical/educational discussion with visible original attribution and links. For a rights-clear whole-work option, link or remotely view the official original PDF. Keep third-party figures outside the original-site content licence."
+  },
+  "publicationBoundary": "These are the SRNIC NSDI23 research prototype diagrams. They are not BitIntelligence 400GE FPGA NIC or 800GE TCU product schematics, and not a ConnectX/NVSwitch physical pipeline.",
+  "assets": [
+    {
+      "filename": "srnic-figure-04-architecture.png",
+      "figure": 4,
+      "caption": "SRNIC architecture.",
+      "sourceUrl": "https://www.usenix.org/system/files/nsdi23-wang-zilong.pdf",
+      "sourcePageUrl": "https://www.usenix.org/conference/nsdi23/presentation/wang-zilong",
+      "pdfPage": 7,
+      "printedPaperPage": 6,
+      "directViewUrl": "https://www.usenix.org/system/files/nsdi23-wang-zilong.pdf#page=7",
+      "sourcePixelSize": [
+        3060,
+        3960
+      ],
+      "cropPixels": {
+        "left": 396,
+        "top": 354,
+        "width": 960,
+        "height": 1230
+      },
+      "outputPixelSize": [
+        960,
+        1230
+      ],
+      "sourceRenderDpi": 360,
+      "bytes": 97983,
+      "sha256": "40fc9e5e6241c54d156804bc8c11e7d15f024947706af9103885bd60eba923e1",
+      "use": "Overall host/RNIC architecture; outgoing, incoming fast and incoming slow paths.",
+      "method": "Rectangular crop from a 360-DPI Poppler PDF rendering. Original figure/caption retained. No AI generation, text replacement, recolouring, layout change or enlargement after rendering.",
+      "attribution": "Zilong Wang et al., SRNIC: A Scalable Architecture for RDMA NICs, NSDI 2023, Figure 4, printed p.6 (PDF p.7). Copyright retained by the authors or their employer.",
+      "qa": "Visually verified at original resolution: complete caption, no clipped diagram elements, clear small text."
+    },
+    {
+      "filename": "srnic-figure-06-sq-scheduler.png",
+      "figure": 6,
+      "caption": "The cache-free SQ scheduler.",
+      "sourceUrl": "https://www.usenix.org/system/files/nsdi23-wang-zilong.pdf",
+      "sourcePageUrl": "https://www.usenix.org/conference/nsdi23/presentation/wang-zilong",
+      "pdfPage": 8,
+      "printedPaperPage": 7,
+      "directViewUrl": "https://www.usenix.org/system/files/nsdi23-wang-zilong.pdf#page=8",
+      "sourcePixelSize": [
+        3060,
+        3960
+      ],
+      "cropPixels": {
+        "left": 285,
+        "top": 339,
+        "width": 1170,
+        "height": 921
+      },
+      "outputPixelSize": [
+        1170,
+        921
+      ],
+      "sourceRenderDpi": 360,
+      "bytes": 90483,
+      "sha256": "9a20336575d88b1c6960df4c4e1196de6ce1bce2856c590dcf42e9e021273da3",
+      "use": "Doorbell/credit events, QPC state, scheduling policy and schedule queue.",
+      "method": "Rectangular crop from a 360-DPI Poppler PDF rendering. Original figure/caption retained. No AI generation, text replacement, recolouring, layout change or enlargement after rendering.",
+      "attribution": "Zilong Wang et al., SRNIC: A Scalable Architecture for RDMA NICs, NSDI 2023, Figure 6, printed p.7 (PDF p.8). Copyright retained by the authors or their employer.",
+      "qa": "Visually verified at original resolution: complete caption, no clipped diagram elements, clear small text."
+    },
+    {
+      "filename": "srnic-figure-07-bitmap-recovery.png",
+      "figure": 7,
+      "caption": "Selective repeat with bitmap onloading.",
+      "sourceUrl": "https://www.usenix.org/system/files/nsdi23-wang-zilong.pdf",
+      "sourcePageUrl": "https://www.usenix.org/conference/nsdi23/presentation/wang-zilong",
+      "pdfPage": 9,
+      "printedPaperPage": 8,
+      "directViewUrl": "https://www.usenix.org/system/files/nsdi23-wang-zilong.pdf#page=9",
+      "sourcePixelSize": [
+        3060,
+        3960
+      ],
+      "cropPixels": {
+        "left": 1581,
+        "top": 345,
+        "width": 1233,
+        "height": 759
+      },
+      "outputPixelSize": [
+        1233,
+        759
+      ],
+      "sourceRenderDpi": 360,
+      "bytes": 124411,
+      "sha256": "05ec11c3a890ecda113e73fa92c9cd6230836b3b57de3ab9358688603d9cee30",
+      "use": "Requester/responder recovery paths and the CPU/RNIC boundary.",
+      "method": "Rectangular crop from a 360-DPI Poppler PDF rendering. Original figure/caption retained. No AI generation, text replacement, recolouring, layout change or enlargement after rendering.",
+      "attribution": "Zilong Wang et al., SRNIC: A Scalable Architecture for RDMA NICs, NSDI 2023, Figure 7, printed p.8 (PDF p.9). Copyright retained by the authors or their employer.",
+      "qa": "Visually verified at original resolution: complete caption, no clipped diagram elements, clear small text."
+    },
+    {
+      "filename": "srnic-figure-08-recovery-exit.png",
+      "figure": 8,
+      "caption": "Fast exit from the loss recovery state.",
+      "sourceUrl": "https://www.usenix.org/system/files/nsdi23-wang-zilong.pdf",
+      "sourcePageUrl": "https://www.usenix.org/conference/nsdi23/presentation/wang-zilong",
+      "pdfPage": 10,
+      "printedPaperPage": 9,
+      "directViewUrl": "https://www.usenix.org/system/files/nsdi23-wang-zilong.pdf#page=10",
+      "sourcePixelSize": [
+        3060,
+        3960
+      ],
+      "cropPixels": {
+        "left": 315,
+        "top": 354,
+        "width": 1095,
+        "height": 570
+      },
+      "outputPixelSize": [
+        1095,
+        570
+      ],
+      "sourceRenderDpi": 360,
+      "bytes": 73499,
+      "sha256": "37c61a59aae6f7b9ccf3ee285618d0fda363dc76dcaaff22ac2f9a3b7078fda8",
+      "use": "Advanced detail: race when software updates expected PSN during recovery.",
+      "method": "Rectangular crop from a 360-DPI Poppler PDF rendering. Original figure/caption retained. No AI generation, text replacement, recolouring, layout change or enlargement after rendering.",
+      "attribution": "Zilong Wang et al., SRNIC: A Scalable Architecture for RDMA NICs, NSDI 2023, Figure 8, printed p.9 (PDF p.10). Copyright retained by the authors or their employer.",
+      "qa": "Visually verified at original resolution: complete caption, no clipped diagram elements, clear small text."
+    }
+  ]
+}

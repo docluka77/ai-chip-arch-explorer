@@ -1400,7 +1400,7 @@ D.companion=[
 D.readingRoutes=[
   {
     "id": "guo",
-    "label": "郭传雄参与的论文",
+    "label": "gcx参与的论文",
     "ids": [
       "dcell",
       "bcube",
@@ -1836,5 +1836,5 @@ const additions=[
   }
 ];
 for(const a of additions){if(!D.sources.some(v=>v.id===a.id))D.sources.push(a);if(!window.OBS_DATA.sources.some(v=>v.id===a.id))window.OBS_DATA.sources.push(a);}
-window.OBS_DATA.version='0.4.0';
+window.OBS_DATA.version='0.5.0';
 })();

@@ -34,3 +34,9 @@ DeepInfer源码本身为Apache-2.0，DeepSeek模型仓库有独立MIT条款；�
 用户指定微信公众号文章仅作为研究入口，未复制全文、作者照片或新闻图片进网站。产品状态标为媒体披露，官方未公开的微架构不臆造。22篇论文与标准通过作者/会议/联盟原始入口引用，作者署名、关键图页与实验条件分别保留；未分发论文PDF。
 
 RDMA路径、SRNIC职责、packet示例、scale-up/out通信域及开销图均为原创教学重绘，不是物理floorplan或测得trace；原文、协议、第三方实现的权利独立适用。byte替换针对存储单位，ByteDance与新闻原文标题保持命名准确。
+
+## 0.5 SRNIC原图摘录
+
+assets/figures/rdma/ 中4张PNG是 Zilong Wang et al., SRNIC: A Scalable Architecture for RDMA NICs, NSDI 2023 的 Figure4/6/7/8，用于对应机制的教育性讨论。保留原图注，正文图外标注论文、作者入口、文件页和原文链接；版权属于原作者或雇主，不纳入本站原创保留权利声明，也不表示获得通用CC再许可。原图来源和裁切记录见同目录provenance.json。
+
+NSDI23卷首版权条款：https://www.usenix.org/sites/default/files/nsdi23_title-organizers.pdf#page=2 。原文：https://www.usenix.org/system/files/nsdi23-wang-zilong.pdf 。

@@ -1,10 +1,25 @@
+# 0.5 · RDMA图解与原图
+
+2026-10-30。保留已有章节与归档。
+
+- 将人物叙述统一显示为gcx；原始论文完整署名和来源链接保留准确。
+- 图解总览前置，增加原论文图独立入口。4张SRNIC原图保留原比例和原图注，中文说明放图外，可切图与放大。
+- 增加/重画通信域、RDMA数据路径、SRNIC功能划分、协议分层、完成语义、MoE网络依赖六组模型；scale-up/out/Ethernet UL三种视图分别绘制。
+- 纠正SRNIC QPC全量片上、MTT cache与WQE cache的区别；拆开Requester/Responder恢复职责与ePSN退出检查范围。
+- 发起端CQE与远端通知/GPU消费分开；ACK返回发起端transport。SRNIC payload快路径与元数据慢路径分开，不再使用错误的底部串行模块连线。
+- 端点RNIC、传输协议与域间fabric分层；Ethernet Unified Local放在域内语义中。不把消息传输、内存一致性和collective等同。
+- 文字使用自动增高的HTML模块，箭头占独立留白；SVG动画文字做边界检查，移动端保持大字并允许横向滚动。
+- 原图摘录版权归作者或雇主，详见THIRD_PARTY_NOTICES和assets/figures/rdma/provenance.json。
+
+---
+
 # 0.4 · 07 RDMA与集群互连
 
 2026-10-30。原始CNN/MAESTRO根首页、观察室既有章节和0.1归档继续保留。
 
 ## 阅读内容
 
-- 完整阅读用户提供的芯东西文章，确定郭传雄、比特智路、400GE FPGA与在研800GE TCU。产品微架构、工艺、功耗、QP容量、PCIe与测试参数未公开核实，保留未知。SRNIC不是上述产品的实现证据。
+- 完整阅读用户提供的芯东西文章，确定gcx、比特智路、400GE FPGA与在研800GE TCU。产品微架构、工艺、功耗、QP容量、PCIe与测试参数未公开核实，保留未知。SRNIC不是上述产品的实现证据。
 - 22篇主线与延伸论文；本人参与与领域对照分开。SRNIC作者/模块和原型条件、Collie NSDI2022、ByteExpress 2026-10 v2预印本、DCP2025条件均标明。CloudBrain为项目入口，QoS用SecondNet作关联，不补造同名论文。
 - 12步RC WRITE依赖动画，可暂停/单步，模块弹层和Python/verbs语义、MR/QP、DMA、completion/消费依赖分别解释。
 - 8包教学对比物理丢包与纯乱序、按序丢弃基线与选择补缺，保留payload到齐和最终交接两步。SRNIC拆到WQE-cache-free调度、host bitmap/CtrlQ/RetryQ、协议扩展与退出恢复同步。

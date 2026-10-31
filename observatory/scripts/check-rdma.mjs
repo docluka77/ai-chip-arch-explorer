@@ -7,7 +7,7 @@ const project=fileURLToPath(new URL('../',import.meta.url));
 const root=fs.existsSync(path.join(project,'dist/index.html'))?path.join(project,'dist'):project;
 const sandbox={window:{},document:{querySelector:()=>null,dispatchEvent(){}},cancelAnimationFrame(){},requestAnimationFrame(){return 1;},CustomEvent:class {}};
 vm.createContext(sandbox);
-for(const f of ['data','research-data','operator-data','operator-provenance','operator-context','operator','rdma-data','rdma-evidence','rdma'])vm.runInContext(fs.readFileSync(path.join(root,f+'.js'),'utf8'),sandbox,{filename:f+'.js'});
+for(const f of ['data','research-data','operator-data','operator-provenance','operator-context','operator','rdma-data','rdma-evidence','rdma-visuals','rdma'])vm.runInContext(fs.readFileSync(path.join(root,f+'.js'),'utf8'),sandbox,{filename:f+'.js'});
 const D=sandbox.window.OBS_RDMA_DATA,O=sandbox.window.OBS_RDMA,all=sandbox.window.OBS_DATA.sources;
 assert.equal(D.papers.length,22);assert.equal(new Set(D.papers.map(v=>v.id)).size,22);
 assert.equal(new Set(all.map(s=>s.id)).size,all.length);
@@ -38,7 +38,15 @@ let s=O.location();assert.equal(s.packetStep,8);assert.equal(s.scenario,'reorder
 O.restore(new URLSearchParams('rdTab=bad&rdStep=999&rdPacket=-3&rdPaper=wrong&rdC_eff=9&rdC_size=-7'));
 s=O.location();assert.equal(s.tab,'start');assert.equal(s.step,11);assert.equal(s.packetStep,0);assert.equal(s.paper,'srnic');assert.equal(s.eff,1);assert.equal(s.size,1);
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');for(const [,asset]of html.matchAll(/(?:src|href)="([^"?#:]+\.(?:js|css))(?:\?[^"#]*)?"/g))assert.ok(fs.existsSync(path.join(root,asset)),asset);
-assert.ok(html.includes('data-view="rdma"'));assert.ok(html.includes('rdma.js?v=0.4.0'));assert.ok(html.indexOf('rdma-evidence.js')<html.indexOf('src="app.js'));
+assert.ok(html.includes('data-view="rdma"'));assert.ok(html.includes('rdma.js?v=0.5.0'));assert.ok(html.indexOf('rdma-evidence.js')<html.indexOf('src="app.js'));
 for(const file of fs.readdirSync(root).filter(f=>/\.(js|html)$/.test(f))){const text=fs.readFileSync(path.join(root,file),'utf8').replaceAll('前字节大牛做AI网络芯片，融资数亿元','').replaceAll('字节跳动','');assert.ok(!text.includes('字节'),file+' live unit label');}
 assert.ok(!fs.readFileSync(path.join(root,'rdma-evidence.js'),'utf8').includes('work/rdma-research/'));
 console.log(`RDMA checks: 22 papers / authors; ${all.length} unique sources; WRITE dependencies; loss/reorder counts; GB/s units, bottlenecks, setup amortization and share-state bounds.`);
+
+assert.ok(D.modules.srnic_qpc.body.includes('整份保存在片上'));
+assert.ok(!fs.readFileSync(path.join(root,'rdma-data.js'),'utf8').includes('QPC和MTT cache'));
+for(const f of sandbox.window.OBS_RDMA_VISUALS.figureMetadata)assert.ok(fs.existsSync(path.join(root,'assets/figures/rdma',f.file)),f.file);
+for(const file of ['rdma.js','rdma-data.js','rdma-evidence.js'])assert.ok(!fs.readFileSync(path.join(root,file),'utf8').includes('郭传雄'),file+' gcx display');
+for(const mode of ['up','out','ethernet']){const model=sandbox.window.OBS_RDMA_VISUALS.scale(mode);assert.ok(!model.includes('<svg'));if(mode==='out')assert.ok(model.includes('RNIC A')&&model.includes('RNIC B'));}
+assert.ok(sandbox.window.OBS_RDMA_VISUALS.srnic().includes('MTT cache'));
+console.log('Visual models: separate endpoint/fabric layers; four original figures; gcx display; QPC residency correction.');
