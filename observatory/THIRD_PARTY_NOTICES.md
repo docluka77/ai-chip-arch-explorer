@@ -40,3 +40,7 @@ RDMA路径、SRNIC职责、packet示例、scale-up/out通信域及开销图均�
 assets/figures/rdma/ 中4张PNG是 Zilong Wang et al., SRNIC: A Scalable Architecture for RDMA NICs, NSDI 2023 的 Figure4/6/7/8，用于对应机制的教育性讨论。保留原图注，正文图外标注论文、作者入口、文件页和原文链接；版权属于原作者或雇主，不纳入本站原创保留权利声明，也不表示获得通用CC再许可。原图来源和裁切记录见同目录provenance.json。
 
 NSDI23卷首版权条款：https://www.usenix.org/sites/default/files/nsdi23_title-organizers.pdf#page=2 。原文：https://www.usenix.org/system/files/nsdi23-wang-zilong.pdf 。
+
+## 0.6 文献目录
+
+新增条目只发布本站的中文导读、事实性书目信息与原始链接；未分发新增论文全文、规范全文或第三方代码。原文、图表、规范和代码分别受原权利人及其许可约束。标准发布概览不冒充全文；厂商技术文档与论文独立评估分开。核对范围与获取限制在每张阅读卡中说明。

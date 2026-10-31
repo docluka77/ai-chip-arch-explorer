@@ -1,5 +1,5 @@
 /* 0.2 reading theme. Original 0.1 remains in archive/v01/. */
-@font-face{font-family:ObservatorySans;src:url('assets/fonts/noto-sans-sc-subset.woff2?v=0.5.0') format('woff2');font-weight:400 700;font-display:swap}
+@font-face{font-family:ObservatorySans;src:url('assets/fonts/noto-sans-sc-subset.woff2?v=0.6.0') format('woff2');font-weight:400 700;font-display:swap}
 :root{--bg:#f4f6f8;--paper:#fff;--ink:#273c50;--muted:#6c7c8d;--line:#dae1e9;--green:#356d96;--lime:#dceaf5;--canvas:#f5f8fb;--amber:#b27b34;--sans:ObservatorySans,'Noto Sans SC','PingFang SC','Microsoft YaHei UI','Segoe UI',sans-serif}
 body{font-size:16px;line-height:1.8;color:var(--ink);letter-spacing:.1px}
 button,input,select,textarea{font-family:var(--sans)}

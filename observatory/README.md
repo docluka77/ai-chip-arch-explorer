@@ -1,10 +1,10 @@
-# 现代 AI 芯片架构观察室 0.5
+# 现代 AI 芯片架构观察室 0.6
 
 从官方原图，逐层拆到计算单元内部。原仓库的 CNN / MAESTRO 页面继续保留在根目录，本目录提供新的独立界面。
 
 在线入口：[芯片架构观察室](https://docluka77.github.io/ai-chip-arch-explorer/observatory/)。直接打开本目录 index.html 也能阅读，不需要安装或构建。官方远程图片与资料链接需要联网。
 
-新增：[07 RDMA与集群互连](https://docluka77.github.io/ai-chip-arch-explorer/observatory/?v=0.5#rdma) · 4张原论文图、6组图解模型，22篇论文，SRNIC模块，有损/乱序，scale-up/out与开销实验。
+新增：[07 RDMA与集群互连](https://docluka77.github.io/ai-chip-arch-explorer/observatory/?v=0.6#rdma) · 4张原论文图、6组图解模型，90条阅读文献、八条路线，SRNIC模块，有损/乱序，scale-up/out与开销实验。
 
 新入口：[算子执行显微镜](https://docluka77.github.io/ai-chip-arch-explorer/observatory/#operator)。克隆仓库后，在本目录运行 `node scripts/serve.mjs` 预览，运行 `node scripts/check-all.mjs` 核对语法、矩阵结果、形状/数据格式和来源契约；不需要安装依赖。
 
@@ -15,9 +15,9 @@
 3. DeepSeek怎么跑：V4.1 Flash的真实40层配置、CSA2共享、MoE路由教学、DeepInfer执行与开源边界。
 4. 瓶颈实验：保留可编辑的Dense Decode简化模型，不将它套到复杂MoE模型。
 5. 看懂设计差异：先讲三个问题，完整技术表折叠在后面。
-6. 原始资料：106份资料及具体证据边界。
+6. 原始资料：161份资料及具体证据边界。
 7. 我的笔记：当前浏览器保存，可备份迁移。
-8. 07 RDMA与集群互连：文章/产品边界、RC WRITE动画、SRNIC、丢包与乱序例子、scale-up/out、开销模型、22篇论文。
+8. 07 RDMA与集群互连：文章/产品边界、RC WRITE动画、SRNIC、丢包与乱序例子、scale-up/out、开销模型、90条精选文献。
 
 ## 继续修改
 
@@ -30,6 +30,8 @@
 - operator.css：显微镜排版与手机阅读。
 - rdma-data.js：RDMA依赖、模块、丢包教学和单位明确的开销公式。
 - rdma-evidence.js：22篇论文的作者/机制/实验/图页，以及官方标准与产品公开边界。
+- rdma-library-data.js：90条阅读记录、13专题、8条路线和55条新增唯一来源，原有来源升级为阅读卡时复用。
+- rdma-library.js / rdma-library.css：目录、组合筛选、分类与证据范围展示；分享链接保存筛选状态。
 - rdma-visuals.js / rdma-visuals.css：按文档流布局的架构模型、原图与放大查看。
 - rdma.js / rdma.css：07专题交互、动画、筛选阅读、开销实验及响应布局。
 - app.js：应用交互、对照、实验、笔记、深链接。

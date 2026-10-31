@@ -1,4 +1,4 @@
-/* Reviewed primary-source reading records; no third-party paper text or images bundled. */
+/* Original reading records; images are separately attributed in assets/figures/rdma. */
 'use strict';
 (() => {
 const D=window.OBS_RDMA_DATA;
@@ -1836,5 +1836,5 @@ const additions=[
   }
 ];
 for(const a of additions){if(!D.sources.some(v=>v.id===a.id))D.sources.push(a);if(!window.OBS_DATA.sources.some(v=>v.id===a.id))window.OBS_DATA.sources.push(a);}
-window.OBS_DATA.version='0.5.0';
+window.OBS_DATA.version='0.6.0';
 })();

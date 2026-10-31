@@ -7,9 +7,9 @@ const project=fileURLToPath(new URL('../',import.meta.url));
 const root=fs.existsSync(path.join(project,'dist/index.html'))?path.join(project,'dist'):project;
 const sandbox={window:{},document:{querySelector:()=>null,dispatchEvent(){}},cancelAnimationFrame(){},requestAnimationFrame(){return 1;},CustomEvent:class {}};
 vm.createContext(sandbox);
-for(const f of ['data','research-data','operator-data','operator-provenance','operator-context','operator','rdma-data','rdma-evidence','rdma-visuals','rdma'])vm.runInContext(fs.readFileSync(path.join(root,f+'.js'),'utf8'),sandbox,{filename:f+'.js'});
+for(const f of ['data','research-data','operator-data','operator-provenance','operator-context','operator','rdma-data','rdma-evidence','rdma-library-data','rdma-visuals','rdma-library','rdma'])vm.runInContext(fs.readFileSync(path.join(root,f+'.js'),'utf8'),sandbox,{filename:f+'.js'});
 const D=sandbox.window.OBS_RDMA_DATA,O=sandbox.window.OBS_RDMA,all=sandbox.window.OBS_DATA.sources;
-assert.equal(D.papers.length,22);assert.equal(new Set(D.papers.map(v=>v.id)).size,22);
+assert.equal(D.papers.length,D.catalog.expectedTotal);assert.ok(D.papers.length>=80);assert.equal(new Set(D.papers.map(v=>v.id)).size,D.papers.length);
 assert.equal(new Set(all.map(s=>s.id)).size,all.length);
 for(const m of Object.values(D.modules))for(const id of m.refs)assert.ok(all.some(s=>s.id===id),id);
 for(const step of D.steps)for(const id of step.refs)assert.ok(all.some(s=>s.id===id),id);
@@ -38,10 +38,10 @@ let s=O.location();assert.equal(s.packetStep,8);assert.equal(s.scenario,'reorder
 O.restore(new URLSearchParams('rdTab=bad&rdStep=999&rdPacket=-3&rdPaper=wrong&rdC_eff=9&rdC_size=-7'));
 s=O.location();assert.equal(s.tab,'start');assert.equal(s.step,11);assert.equal(s.packetStep,0);assert.equal(s.paper,'srnic');assert.equal(s.eff,1);assert.equal(s.size,1);
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');for(const [,asset]of html.matchAll(/(?:src|href)="([^"?#:]+\.(?:js|css))(?:\?[^"#]*)?"/g))assert.ok(fs.existsSync(path.join(root,asset)),asset);
-assert.ok(html.includes('data-view="rdma"'));assert.ok(html.includes('rdma.js?v=0.5.0'));assert.ok(html.indexOf('rdma-evidence.js')<html.indexOf('src="app.js'));
+assert.ok(html.includes('data-view="rdma"'));assert.ok(html.includes('rdma.js?v=0.6.0'));assert.ok(html.indexOf('rdma-evidence.js')<html.indexOf('src="app.js'));
 for(const file of fs.readdirSync(root).filter(f=>/\.(js|html)$/.test(f))){const text=fs.readFileSync(path.join(root,file),'utf8').replaceAll('前字节大牛做AI网络芯片，融资数亿元','').replaceAll('字节跳动','');assert.ok(!text.includes('字节'),file+' live unit label');}
 assert.ok(!fs.readFileSync(path.join(root,'rdma-evidence.js'),'utf8').includes('work/rdma-research/'));
-console.log(`RDMA checks: 22 papers / authors; ${all.length} unique sources; WRITE dependencies; loss/reorder counts; GB/s units, bottlenecks, setup amortization and share-state bounds.`);
+console.log(`RDMA checks: ${D.papers.length} reading records / attribution; ${all.length} unique sources; WRITE dependencies; loss/reorder counts; GB/s units, bottlenecks, setup amortization and share-state bounds.`);
 
 assert.ok(D.modules.srnic_qpc.body.includes('整份保存在片上'));
 assert.ok(!fs.readFileSync(path.join(root,'rdma-data.js'),'utf8').includes('QPC和MTT cache'));
@@ -50,3 +50,23 @@ for(const file of ['rdma.js','rdma-data.js','rdma-evidence.js'])assert.ok(!fs.re
 for(const mode of ['up','out','ethernet']){const model=sandbox.window.OBS_RDMA_VISUALS.scale(mode);assert.ok(!model.includes('<svg'));if(mode==='out')assert.ok(model.includes('RNIC A')&&model.includes('RNIC B'));}
 assert.ok(sandbox.window.OBS_RDMA_VISUALS.srnic().includes('MTT cache'));
 console.log('Visual models: separate endpoint/fabric layers; four original figures; gcx display; QPC residency correction.');
+
+const Library=sandbox.window.OBS_RDMA_LIBRARY;
+assert.equal(Library.query().length,D.papers.length);
+assert.equal(Library.query({kind:'paper'}).length,D.catalog.counts.paper);
+assert.ok(Library.query({kind:'paper'}).every(p=>p.kind==='paper'));
+assert.ok(Library.query({kind:'report',query:'rfc8257'}).some(p=>p.id==='rfc8257'));
+assert.ok(!Library.query({kind:'standard'}).some(p=>p.id==='rfc8257'));
+assert.ok(Library.query({topic:'moe'}).some(p=>p.id==='deepep25_code'));
+assert.equal(Library.query({fresh:true}).length,D.catalog.addedCount);
+assert.ok(Library.query({year:'undated'}).every(p=>!Number.isInteger(p.year)));
+assert.ok(Library.query({year:'recent'}).every(p=>p.year>=2024&&p.year<=2026));
+assert.equal(Library.query({query:'不存在的目录关键词x9x9'}).length,0);
+assert.ok(Library.query({query:'NCCL 2.19.1'}).length>0);
+for(const t of D.catalog.tracks){assert.ok(t.ids.length>=3);assert.equal(Library.query({track:t.id})[0].id,t.ids[0]);}
+for(const p of D.papers){assert.ok(p.topics.length>0,p.id);assert.ok(p.why_read,p.id+' purpose');assert.ok(p.reading_guide.length>0,p.id+' reading guide');for(const topic of p.topics)assert.ok(D.catalog.topicNames[topic],p.id+' topic');}
+O.restore(new URLSearchParams('rdTab=papers&rdL_topic=gpu&rdL_kind=docs&rdL_sort=newest&rdL_year=recent&rdL_fresh=1'));
+s=O.location();assert.equal(s.topic,'gpu');assert.equal(s.kind,'docs');assert.equal(s.fresh,true);
+O.restore(new URLSearchParams('rdL_topic=bad&rdL_kind=bad&rdL_track=bad'));
+s=O.location();assert.equal(s.topic,'all');assert.equal(s.kind,'all');assert.equal(s.track,'all');
+console.log('Directory: topics, types, tracks, years, combined search, evidence boundaries and shared filters checked.');

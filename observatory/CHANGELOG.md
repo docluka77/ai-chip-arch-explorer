@@ -1,3 +1,18 @@
+# 0.6 · 公开文献目录
+
+2026-10-30。目录从22条扩为90条，本轮新增/扩展68张阅读卡；全站唯一来源从106增至161。包含51篇正式论文、12份技术报告/预印本、11份规范/协议RFC、3份公开标准概览、11份官方技术文档、2份固定版本工程说明。既有架构模型、4张原论文图、动画、旧页及归档保留。
+
+- 按协议、可靠性、拥塞、RNIC/DPU、scale-up/out、GPU、collective、MoE、训练、推理/KV、诊断隔离和安全共13专题检索。增加8条阅读路线，类型、深度、年份与新增筛选可组合，URL可恢复。
+- 收录DCTCP、pFabric、NDP、Homa、Swift、EQDS、Justitia、Husky、Reverie、Harmonic、Eunomia、ConWeave、Tagger、Falcon、CSIG、BURST等；只将确证署名的Tagger加入gcx参与范围。
+- 收录MegaScale、HPN、SwitchML、SCCL、MSCCLang、TACCL、MSCCL++、FLUX、COMET、HeteCCL、SyCCL、DistServe、Mooncake、Splitwise、FlashMoE、RailS、Crux等，正式年份与选定预印本版本分别写明。
+- 协议RFC、UE正式规范、UALink/IBTA公开概览、历史NVSwitch、NVLink6、CX9、DPA、GPUDirect ordering、NCCL Device/GIN、NVSHMEM、ACS/IOMMU、GPUNetIO和SHARP按文献类型区分；四份无明确发表年的活文档不虚构年份。
+- 原始作者/机构与发表入口可追溯；每条含阅读价值、位置指引、机制、代价、实验/适用范围与核对说明。NDP、Falcon、CSIG公开资料可读但全文获取受限的事实保留。
+- 对比边界包括：RFC8257为Informational而非Internet Standard；MSCCL++为ASPLOS26；2026修订的NCCL分析仍针对2.19.1；COMET主要为单机8H800；RailS为Mininet/Soft-RoCE仿真；FlashMoE为推理；DeepEP固定V2.5与DeepInfer固定release的公开范围分别说明。
+
+node scripts/check-all.mjs覆盖旧模型/算子、目录去重与署名、类型区分、组合查询、阅读路线和分享状态。浏览器检查目录、全部卡片切换、筛选/空结果、路线、关联阅读、移动布局和旧原图入口。
+
+---
+
 # 0.5 · RDMA图解与原图
 
 2026-10-30。保留已有章节与归档。
