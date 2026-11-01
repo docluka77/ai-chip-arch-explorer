@@ -6,9 +6,9 @@ import {fileURLToPath} from 'node:url';
 const project=fileURLToPath(new URL('../',import.meta.url)),root=fs.existsSync(path.join(project,'dist/index.html'))?path.join(project,'dist'):project;
 const sandbox={window:{},document:{querySelector:()=>null,dispatchEvent(){},addEventListener(){}},clearTimeout(){},cancelAnimationFrame(){},requestAnimationFrame(){return 1;},CustomEvent:class {}};
 vm.createContext(sandbox);
-for(const f of ['data','research-data','operator-data','operator-provenance','operator-context','rdma-data','rdma-evidence','rdma-library-data','rdma-visuals','rdma-library','rdma-story','moe-topology-data','moe-topology','review-ledger','rdma'])vm.runInContext(fs.readFileSync(path.join(root,f+'.js'),'utf8'),sandbox,{filename:f+'.js'});
+for(const f of ['data','research-data','operator-data','operator-provenance','operator-context','rdma-data','rdma-evidence','rdma-library-data','rdma-visuals','rdma-library','rdma-story','moe-topology-data','moe-cost-model','moe-cost','moe-topology','review-ledger','rdma'])vm.runInContext(fs.readFileSync(path.join(root,f+'.js'),'utf8'),sandbox,{filename:f+'.js'});
 const W=sandbox.window,R=W.OBS_RDMA_STORY,O=W.OBS_RDMA;
-assert.equal(W.OBS_DATA.version,'0.8.0','one release version must survive all enrichment layers');
+assert.equal(W.OBS_DATA.version,'0.9.0','one release version must survive all enrichment layers');
 assert.equal(R.steps.length,7);
 for(const s of R.steps){for(const id of s.refs)assert.ok(R.sources[id]&&R.sources[id][0].startsWith('https://'),s.short);for(const n of s.nodes)assert.ok(Number.isInteger(n)&&n>=0&&n<5);assert.ok(s.boundary.length>20&&s.dependency.length>20);}
 assert.ok(R.steps[4].body.includes('不自动'));

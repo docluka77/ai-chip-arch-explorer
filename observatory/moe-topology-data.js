@@ -15,21 +15,41 @@
     example:{title:'DeepEP V2.5 · expanded layout 示例',url:ep+'README.md#example-use-in-model-training-and-inference',scope:'expanded专家计算先应用路由权重；combine纯求和。不能在combine再次乘权。'},
     ordering:{title:'GPUDirect RDMA · 同步与可见性',url:'https://docs.nvidia.com/cuda/gpudirect-rdma/#synchronization-and-memory-ordering',scope:'源端completion、远端放置与GPU消费不是同一事件。'}
   };
+  const profiles={
+    v4:{id:'v4',name:'DeepSeek-V4.1 Flash',hidden:5120,intermediate:2304,experts:384,topK:6,scale:1.5,epRanks:16,perGPU:24,nodes:2,boundary:'V4公开配置 + hybrid fallback源码；本图EP16/两节点是教学假设，不是作者跨域实测。V4公开性能曲线在一个scale-up域内。'},
+    v3:{id:'v3',name:'DeepSeek-V3 对照',hidden:7168,intermediate:2048,experts:256,topK:8,scale:2.5,epRanks:64,perGPU:4,nodes:8,boundary:'V3报告EP64/8节点；仅展开A/B两个节点，其余6节点本次未选、未展开。编号与路由为教学映射。'}
+  };
+  const di='https://github.com/deepseek-ai/DeepInfer/blob/553741557a57df44a46fb3ab72b6aafeaf945337/';
+  Object.assign(sources,{
+    v4paper:{title:'V4.1技术报告 · 模型与系统背景',url:'https://arxiv.org/html/2609.19969v1',scope:'模型和推理系统背景；不提供本页EP16跨域教学拓扑的单层实测。精确维度以固定配置、通信行为以固定源码为据。'},
+    v4config:{title:'V4.1固定配置 · 5120 / 384 / top-6',url:'https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash/blob/314113f8a7dadb388215396ba5fbee2c610a04d6/config.json#L22-L58',scope:'已核对固定配置：I=2304、shared=1、routing scale=1.5、clamp=10；没有沿用V3最多4组限制。'},
+    v4route:{title:'V4路由 / 专家计算 · 固定DeepInfer',url:di+'deepinfer/model_executor/models/v4_modules/mlp.py#L347-L459',scope:'人为负载偏斜profile开关、真实路由返回idx/weights、grouped GEMM及权重/clamp/cast。'},
+    v4fallback:{title:'V4分解路径与MegaMoE边界',url:di+'deepinfer/model_executor/models/v4_modules/mlp.py#L565-L616',scope:'公开分解路径与异步dispatch/combine；MegaMoE另须处在NVLink domain，不能把跨域教学估算称为实测。'},
+    v4sm:{title:'V4 EPBuffer hybrid与SM预算',url:di+'deepinfer/model_executor/parallel_utils/userbuffer.py#L63-L91',scope:'允许hybrid，通信占SM；本实验用显式算力预留假设近似竞争，没有复现动态调度。'},
+    v4bench:{title:'V4作者推理曲线 · scale-up域内',url:di+'README.md#performance-benchmarks',scope:'prefill 4×SM100、decode 64×SM100，各自处在一个scale-up域；不是跨节点单层MoE延迟测量。'}
+  });
   const presets={
     mixed:{label:'本地 + 远端',experts:[0,8,20,28,36,44,52,60],note:'4个本地专家、4个远端专家；远端B0只做本次转发，没有选中专家。'},
     local:{label:'全部域内',experts:[0,4,8,12,16,20,24,28],note:'8个专家都在A节点，仍可能有NVLink通信；本token无需RDMA。'},
     remote:{label:'全部在远端',experts:[32,36,40,44,48,52,56,60],note:'8个专家在B节点，dispatch跨RDMA仍只需1份逻辑向量，再在B域分发。'},
     packed:{label:'同卡多个专家',experts:[0,1,8,9,44,45,46,47],note:'B3接收一份向量供4个专家使用；专家条目数、GPU数、RDMA份数不同。'}
   };
-  const proportions=[.20,.16,.14,.12,.11,.10,.09,.08],weights=proportions.map(x=>x*2.5);
+  const v4presets={
+    mixed:{label:'本地 + 远端',experts:[0,48,120,216,264,360],note:'3个本地与3个远端专家；B0无本次目标专家，但承担跨域中转。'},
+    local:{label:'全部域内',experts:[0,24,48,96,144,168],note:'6个目标均在A域，无需本token的RDMA分支。'},
+    remote:{label:'全部在远端',experts:[192,216,240,288,336,360],note:'6个目标在B域，先到B0再按目标GPU去重分发。'},
+    packed:{label:'同卡多个专家',experts:[0,1,264,265,266,267],note:'A0有2个目标专家，B3有4个；多个专家共用送到该GPU的一份输入。'}
+  };
+  const presetsFor=profile=>profile==='v3'?presets:v4presets;
   const unique=a=>[...new Set(a)];
-  function model(scenario='mixed',dtype='fp8'){
-    const p=presets[scenario]||presets.mixed;
-    const rows=p.experts.map((e,i)=>({expert:e,rank:Math.floor(e/4),node:e<32?'a':'b',localRank:Math.floor(e/4)%8,weight:weights[i],value:[e%7+1,e%5-2],weighted:[(e%7+1)*weights[i],(e%5-2)*weights[i]]}));
+  function fromExperts(experts,dtype='fp8',profile='v4',scenario='mixed'){
+    const p=profiles[profile]||profiles.v4,props=profile==='v3'?[.20,.16,.14,.12,.11,.10,.09,.08]:[.26,.22,.18,.14,.11,.09];
+    const weights=props.map(x=>x*p.scale),rows=experts.map((e,i)=>({expert:e,rank:Math.floor(e/p.perGPU),node:Math.floor(e/p.perGPU)<8?'a':'b',localRank:Math.floor(e/p.perGPU)%8,weight:weights[i],value:[e%7+1,e%5-2],weighted:[(e%7+1)*weights[i],(e%5-2)*weights[i]]}));
     const local=rows.filter(r=>r.node==='a'),remote=rows.filter(r=>r.node==='b'),localRanks=unique(local.map(r=>r.localRank)),remoteRanks=unique(remote.map(r=>r.localRank));
     const sum=a=>a.reduce((out,r)=>out.map((v,k)=>v+r.weighted[k]),[0,0]),localSum=sum(local),remoteSum=sum(remote),routed=sum(rows),shared=[.5,-.5];
-    return {scenario:p===presets[scenario]?scenario:'mixed',dtype:dtype==='bf16'?'bf16':'fp8',rows,local,remote,localRanks,remoteRanks,localSum,remoteSum,routed,shared,total:routed.map((v,k)=>v+shared[k]),dispatchBytes:7168*(dtype==='bf16'?2:1),combineBytes:7168*2,rdmaCopies:remote.length?1:0,naiveExpertCopies:remote.length,nvCopies:localRanks.filter(i=>i!==0).length+remoteRanks.filter(i=>i!==0).length,weightSum:weights.reduce((a,b)=>a+b,0)};
+    return {profile:p.id,profileData:p,scenario,dtype:dtype==='bf16'?'bf16':'fp8',rows,local,remote,localRanks,remoteRanks,localSum,remoteSum,routed,shared,total:routed.map((v,k)=>v+shared[k]),dispatchBytes:p.hidden*(dtype==='bf16'?2:1),combineBytes:p.hidden*2,rdmaCopies:remote.length?1:0,naiveExpertCopies:remote.length,nvCopies:localRanks.filter(i=>i!==0).length+remoteRanks.filter(i=>i!==0).length,weightSum:weights.reduce((a,b)=>a+b,0)};
   }
+  function model(scenario='mixed',dtype='fp8',profile='v4'){const choices=presetsFor(profile),name=choices[scenario]?scenario:'mixed';return fromExperts(choices[name].experts,dtype,profile,name);}
   const steps=[
     {short:'路由',phase:'ROUTE',title:'一个 token，选择八个 routed experts。',body:'V3的门控决定目标专家。这里固定一组人为选择，观察它映射到哪些GPU与节点；shared expert作为独立的本地教学分支展示。',state:'激活仍在A0。选中8个专家，不等于向网络发送8份。',refs:['config','gate'],code:'weights, topk_idx = gate(x)\n# 示例权重 = 人为归一化比例 × 2.5'},
     {short:'布局 / 去重',phase:'DISPATCH',title:'先按通信目的地去重，再展开专家行。',body:'同一token在一个目标scale-out rank只需要一份逻辑载荷；远端再按目标GPU分发。一个GPU上选多个专家，仍可复用同一份收到的向量。',state:'rank与expert是不同索引。路由元数据、padding和对齐另有开销。',refs:['dispatch','api'],code:'dispatch(x, topk_idx, topk_weights, ...)\n# scale-out rank去重 → scale-up rank去重'},
@@ -44,5 +64,13 @@
     {short:'汇总本地',phase:'COMBINE / NVLINK',title:'本地贡献与远端部分和，在源端汇合。',body:'本地专家结果经对应域内路径返回A0，与远端部分和相加。通信库的combine handle保存布局与还原关系，不是用expert编号直接写一个任意远端地址。',state:'routed = z_A + z_B。真实系统可以流水和重叠；这里顺序展开便于核对。',refs:['combine','api','example'],code:'routed_out = combine(weighted_expert_out, handle, ...)\n# 本地与远端贡献各算一次'},
     {short:'输出',phase:'OUTPUT',title:'MoE分支得到输出，继续下一段模型。',body:'本页把shared贡献与routed贡献合并为MoE分支结果；残差、attention及完整模型层未展开。shared放在A0只是本次公式切面的安排，不是所有部署的固定位置。',state:'已完成的是这一token的教学数据路径，不是实际模型推理trace。',refs:['gate','config','example'],code:'moe_branch = shared_out + routed_out\n# 下一步遵守消费依赖；残差等另行处理'}
   ];
-  window.OBS_MOE_DATA={sources,presets,steps,model,hidden:7168,expertCount:256,topK:8,epRanks:64,reviewed:'2026-10-31'};
+  function stepsFor(profile='v4'){
+    if(profile==='v3')return steps;
+    const a=steps.map(t=>({...t,refs:t.refs.filter(x=>x!=='paper').map(x=>x==='config'?'v4config':x==='gate'?'v4route':x),body:t.body.replaceAll('V3','V4.1').replaceAll('八个','六个').replaceAll('7168','5120'),state:t.state.replaceAll('8个','6个').replaceAll('2.5','1.5')}));
+    a[0]={...a[0],title:'一个token，选择六个routed experts。',state:'激活仍在A0。选中6个专家，不等于向网络发送6份。',code:'# V4 wrapper得到expert_ids与weights；不在浏览器执行gate\n# 人为系数归一化后乘1.5',refs:['v4config','v4route']};
+    a[3]={...a[3],body:'用DeepEP hybrid分解路径解释V4跨域教学假设：源A0经支持的GPU–NIC路径，把去重后的激活送到B0，再由GPU转发。不能把这个EP16假设冒充公开的V4生产实测。',refs:['v4fallback','dispatch','ordering']};
+    a[7]={...a[7],body:'V4固定分解路径在SwiGLU/clamp/cast阶段已经应用有效路由权重，combine不再乘一次。配置routing scale为1.5；本页人为样本不是真实router输出。',refs:['v4route','example']};
+    a[11]={...a[11],refs:['v4route','v4config','v4fallback']};return a;
+  }
+  window.OBS_MOE_DATA={sources,profiles,presets,presetsFor,steps,stepsFor,fromExperts,model,hidden:7168,expertCount:256,topK:8,epRanks:64,reviewed:'2026-10-31'};
 })();

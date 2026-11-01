@@ -1,4 +1,6 @@
-# 现代 AI 芯片架构观察室 0.8
+# 现代 AI 芯片架构观察室 0.9
+
+0.9：默认使用DeepSeek-V4.1 Flash，新增多token/分块、专家热点比例、有效NVLink/RDMA带宽与启动延迟、专家有效算力和通信预留。资源约束时间图、16GPU负载和单项翻倍敏感性联动；保留t0单步拓扑与V3对照。配置事实、用户假设、教学估算、历史作者测量分别标识。
 
 0.8：07的Scale-up/out新增DeepSeek-V3 MoE双域交互拓扑，12步dispatch→专家计算→combine，支持播放/暂停、前后单步、模块展开、4种路由分布、FP8/BF16逻辑载荷和URL恢复。依据V3技术报告与固定DeepEP V2.5源码，区别既有V4.1/SM100算子案例。
 
@@ -8,7 +10,7 @@
 
 在线入口：[芯片架构观察室](https://docluka77.github.io/ai-chip-arch-explorer/observatory/)。直接打开本目录 index.html 也能阅读，不需要安装或构建。官方远程图片与资料链接需要联网。
 
-新增：[07 RDMA与集群互连](https://docluka77.github.io/ai-chip-arch-explorer/observatory/?v=0.8#rdma) · 4张原论文图、6组图解模型，90条阅读文献、八条路线，SRNIC模块，有损/乱序，scale-up/out与开销实验。
+新增：[07 RDMA与集群互连](https://docluka77.github.io/ai-chip-arch-explorer/observatory/?v=0.9#rdma) · 4张原论文图、6组图解模型，90条阅读文献、八条路线，SRNIC模块，有损/乱序，scale-up/out与开销实验。
 
 新入口：[算子执行显微镜](https://docluka77.github.io/ai-chip-arch-explorer/observatory/#operator)。克隆仓库后，在本目录运行 `node scripts/serve.mjs` 预览，运行 `node scripts/check-all.mjs` 核对语法、矩阵结果、形状/数据格式和来源契约；不需要安装依赖。
 
@@ -23,8 +25,13 @@
 7. 我的笔记：当前浏览器保存，可备份迁移。
 8. 07 RDMA与集群互连：文章/产品边界、RC WRITE动画、SRNIC、丢包与乱序例子、scale-up/out、开销模型、90条精选文献。
 
+公式与有限核查范围：[0.9核查记录](REVIEW-v09.md)。
+
 ## 继续修改
 
+- moe-cost-model.js：可复现路由、载荷计数、资源约束DAG和敏感性。
+- moe-cost.js / moe-cost.css：可调假设、时间图、负载与分开的作者测量。
+- moe-topology-data.js / moe-topology.js：V4/V3配置、固定证据、t0拓扑与暂停/单步。
 - data.js：初版芯片条目。
 - research-data.js：原图、资料版本、DeepSeek官方配置和40层共享关系。
 - layers.js：多层微架构重绘、原图查看、矩阵教学。

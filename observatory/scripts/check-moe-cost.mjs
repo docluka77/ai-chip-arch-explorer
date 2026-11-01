@@ -1,0 +1,24 @@
+import fs from 'node:fs';import vm from 'node:vm';import assert from 'node:assert/strict';import path from 'node:path';import {fileURLToPath} from 'node:url';
+const base=fileURLToPath(new URL('../',import.meta.url)),root=fs.existsSync(path.join(base,'dist/index.html'))?path.join(base,'dist'):base;
+const sandbox={window:{},document:{querySelector:()=>null,querySelectorAll:()=>[],dispatchEvent(){},activeElement:null},cancelAnimationFrame(){},requestAnimationFrame(){return 1;},CustomEvent:class {}};vm.createContext(sandbox);
+for(const f of ['moe-topology-data','moe-cost-model','moe-cost','moe-topology'])vm.runInContext(fs.readFileSync(path.join(root,f+'.js'),'utf8'),sandbox,{filename:f});
+const D=sandbox.window.OBS_MOE_DATA,C=sandbox.window.OBS_MOE_COST_MODEL,U=sandbox.window.OBS_MOE_COST,M=sandbox.window.OBS_MOE;
+assert.equal(D.profiles.v4.hidden,5120);assert.equal(D.profiles.v4.topK,6);assert.equal(D.profiles.v4.intermediate,2304);assert.equal(D.profiles.v4.scale,1.5);assert.equal(D.profiles.v4.experts,384);
+assert.ok(!D.stepsFor('v4')[0].body.includes('V3'));assert.ok(D.stepsFor('v4')[3].body.includes('教学假设'));
+const epsilon=1e-7;
+function verify(r){assert.ok(!r.error);const w=r.work;assert.equal(w.assignments,r.p.batch*w.profile.topK);assert.equal(w.rankLoads.reduce((a,b)=>a+b),w.assignments);assert.equal(w.expertLoads.reduce((a,b)=>a+b),w.assignments);
+ for(const route of w.routes){assert.equal(route.length,w.profile.topK);assert.equal(new Set(route).size,route.length);assert.ok(route.every(e=>e>=0&&e<w.profile.experts));}
+ for(const schedule of [r.serial,r.pipeline]){const groups=new Map();assert.ok(Number.isFinite(schedule.total)&&schedule.total>0);for(const j of schedule.jobs){assert.ok(j.duration>0);assert.ok(Math.abs(j.end-j.start-j.duration)<epsilon);assert.ok(j.start>=-epsilon);for(const id of j.deps)assert.ok(j.start+epsilon>=schedule.jobs[id].end,`dependency ${id}→${j.id}`);const a=groups.get(j.resource)||[];a.push(j);groups.set(j.resource,a);}for(const a of groups.values()){a.sort((a,b)=>a.start-b.start);for(let i=1;i<a.length;i++)assert.ok(a[i].start+epsilon>=a[i-1].end,'resource must not serve two jobs simultaneously');}assert.ok(schedule.jobs.every(j=>j.end<=schedule.total+epsilon));}
+ assert.ok(Math.abs(Object.values(r.pipeline.critical).reduce((a,b)=>a+b,0)-r.pipeline.total)<epsilon,'critical path durations must explain finish');
+}
+let cases=0;for(const profile of ['v4','v3'])for(const scenario of ['mixed','local','remote','packed'])for(const dtype of ['fp8','bf16'])for(const skew of [0,100]){const r=C.run({batch:17,chunk:4,skew},{profile,scenario,dtype},false);verify(r);cases++;if(scenario==='local'){assert.equal(r.bytes.rD,0);assert.equal(r.bytes.rC,0);}}
+const hand=C.run({batch:1,chunk:1,nv:100,rdma:100,nvLat:0,rdLat:0,tf:100,launch:0,reserve:0},{profile:'v4',scenario:'mixed',dtype:'fp8'},false);verify(hand);assert.equal(hand.work.flopPerAssignment,70778880);assert.equal(hand.bytes.rD,5120);assert.equal(hand.bytes.rC,10240);assert.ok(Math.abs(hand.serial.total-1.6293888)<epsilon);assert.ok(Math.abs(hand.pipeline.total-1.3221888)<epsilon);
+const balanced=C.run({batch:128,skew:0},{profile:'v4'},false),hot=C.run({batch:128,skew:100},{profile:'v4'},false);assert.ok(hot.work.maxLoad>balanced.work.maxLoad);assert.equal(hot.work.assignments,balanced.work.assignments);assert.equal(hot.bytes.rD,balanced.bytes.rD);assert.ok(hot.bytes.bD<balanced.bytes.bD,'concentration reduces per-GPU copies while increasing compute skew');
+const slower=C.run({batch:64,rdLat:100},{profile:'v4'},false),faster=C.run({batch:64,rdLat:0},{profile:'v4'},false);assert.ok(slower.pipeline.total>faster.pipeline.total);
+for(const [key,p]of Object.entries({nvlink:{batch:256,nv:3,rdma:200,tf:500},rdma:{batch:256,nv:400,rdma:3,tf:500},compute:{batch:256,nv:400,rdma:200,tf:5,skew:100}})){const r=C.run(p,{profile:'v4'});assert.equal(r.bottleneck,key,JSON.stringify(r.sensitivity));}
+const startup=C.run({batch:1,chunk:1,nv:2000,rdma:1000,tf:5000,nvLat:1000,rdLat:1000,launch:1000});assert.equal(startup.bottleneck,'limited');assert.ok(startup.sensitivity[0].gain<.01);
+assert.ok(!D.stepsFor('v4')[0].state.includes('8份'));
+assert.ok(C.run({nv:0}).error);assert.ok(C.run({batch:NaN}).error);assert.ok(C.run({batch:1.5}).error);
+M.restore(new URLSearchParams('mtModel=v4&mc_batch=97&mc_chunk=8&mc_skew=35&mc_nv=37&mc_overlap=0'));assert.equal(M.location().profile,'v4');assert.equal(U.location().batch,97);assert.equal(U.location().overlap,false);assert.equal(U.location().nv,37);
+M.restore(new URLSearchParams('mc_batch=99999&mc_nv=-7&mc_chunk=0'));assert.equal(U.location().batch,2048);assert.equal(U.location().nv,.1);assert.equal(U.location().chunk,1);
+console.log(`MoE cost checks: ${cases} workload cases; no duplicate experts; exact payload/FLOP counts; dependency and resource exclusion; hand-derived timing; skew; latency; 3 bottleneck presets; startup-dominated diagnosis; share bounds.`);
