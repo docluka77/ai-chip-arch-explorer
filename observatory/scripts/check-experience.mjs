@@ -8,7 +8,7 @@ const sandbox={window:{},document:{querySelector:()=>null,dispatchEvent(){},addE
 vm.createContext(sandbox);
 for(const f of ['data','research-data','operator-data','operator-provenance','operator-context','rdma-data','rdma-evidence','rdma-library-data','rdma-visuals','rdma-library','rdma-story','moe-topology-data','moe-cost-model','moe-cost','moe-topology','review-ledger','rdma'])vm.runInContext(fs.readFileSync(path.join(root,f+'.js'),'utf8'),sandbox,{filename:f+'.js'});
 const W=sandbox.window,R=W.OBS_RDMA_STORY,O=W.OBS_RDMA;
-assert.equal(W.OBS_DATA.version,'0.9.2','one release version must survive all enrichment layers');
+assert.equal(W.OBS_DATA.version,'0.9.3','one release version must survive all enrichment layers');
 assert.equal(R.steps.length,7);
 for(const s of R.steps){for(const id of s.refs)assert.ok(R.sources[id]&&R.sources[id][0].startsWith('https://'),s.short);for(const n of s.nodes)assert.ok(Number.isInteger(n)&&n>=0&&n<5);assert.ok(s.boundary.length>20&&s.dependency.length>20);}
 assert.ok(R.steps[4].body.includes('不自动'));
