@@ -1,7 +1,7 @@
 /* Copyright (c) 2026 DOCLUKA77. All rights reserved. */
 'use strict';
 window.OBS_DATA = {
-  version: '0.9.0', reviewed: '2026-10-30',
+  version: '0.9.1', reviewed: '2026-10-30',
   sources: [
     {id:'rubin',publisher:'NVIDIA Developer',type:'official',date:'2026-07',title:'Inside NVIDIA Rubin GPU Architecture',url:'https://developer.nvidia.com/blog/inside-nvidia-rubin-gpu-architecture-powering-the-era-of-agentic-ai/',supports:'Rubin 的 SM、Tensor Core、HBM4、数据搬运与 NVLink。',limit:'厂商架构说明及峰值规格；性能宣传不能直接当作跨厂商实测结论。'},
     {id:'amd',publisher:'AMD · ROCm',type:'official',date:'2026-08-04',title:'Introducing AMD CDNA 5 and the AMD Helios Rackscale Solution',url:'https://rocm.blogs.amd.com/ecosystems-and-partners/cdna5-helios/README.html',supports:'CDNA 5、MI455X、432 GB HBM4、Wave32 与 Helios 系统设计。',limit:'单 GPU、机架、集群是不同统计范围；不能混用。'},

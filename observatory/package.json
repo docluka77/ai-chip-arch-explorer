@@ -1,6 +1,6 @@
 {
   "name": "ai-chip-observatory",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "private": true,
   "description": "A traceable Chinese interactive guide to AI chip architectures",
   "license": "UNLICENSED",

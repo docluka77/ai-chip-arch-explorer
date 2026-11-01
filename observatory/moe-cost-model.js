@@ -57,8 +57,8 @@
       const apply=j=>{if(!j)return;const [r,d]=depInfo(j);j.ready=r;j.depBlocker=d;j.resBlocker=time>r?prev:null;j.blocker=prev;j.start=time;j.end=time+j.duration;j.wait=Math.max(0,time-r);time=j.end;prev=j.id;};
       for(const c of work.chunks){const list=groups[c.index];
         apply(list.find(j=>j.phase==='aD'));apply(list.find(j=>j.phase==='rD'));apply(list.find(j=>j.phase==='bD'));
-        const gpu=list.filter(j=>j.kind==='compute');
-        if(gpu.length){const entered=time,stagePrev=prev;let slowest=gpu[0];for(const j of gpu){const [r,d]=depInfo(j);j.ready=r;j.depBlocker=d;j.resBlocker=entered>r?stagePrev:null;j.blocker=stagePrev;j.start=entered;j.end=entered+j.duration;j.wait=Math.max(0,entered-r);if(j.end>slowest.end)slowest=j;}time=slowest.end;prev=slowest.id;}
+        const gpu=list.filter(j=>j.kind==='compute'),rankScore=j=>{const g=Number(j.resource.slice(4));return (g===work.hottest?1e6:0)+(g===work.hottestA||g===work.hottestB?1e5:0)+work.rankLoads[g]*10+g;};
+        if(gpu.length){const entered=time,stagePrev=prev;let slowest=gpu[0];for(const j of gpu){const [r,d]=depInfo(j);j.ready=r;j.depBlocker=d;j.resBlocker=entered>r?stagePrev:null;j.blocker=stagePrev;j.start=entered;j.end=entered+j.duration;j.wait=Math.max(0,entered-r);if(j.end>slowest.end+1e-9||(Math.abs(j.end-slowest.end)<=1e-9&&rankScore(j)>rankScore(slowest)))slowest=j;}time=slowest.end;prev=slowest.id;}
         apply(list.find(j=>j.phase==='bC'));apply(list.find(j=>j.phase==='rC'));apply(list.find(j=>j.phase==='aC'));
       }
     }else{
