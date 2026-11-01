@@ -1,4 +1,4 @@
-> 新增：[现代 AI 芯片架构观察室 0.7.0](observatory/) · RDMA/SRNIC论文、scale-up/out、网络开销与DeepSeek算子显微镜。原CNN / MAESTRO页面保留。
+> 新增：[现代 AI 芯片架构观察室 0.8.0](observatory/) · RDMA/SRNIC论文、scale-up/out、网络开销与DeepSeek算子显微镜。原CNN / MAESTRO页面保留。
 
 # AI 芯片架构与 MAESTRO 空间探索器
 

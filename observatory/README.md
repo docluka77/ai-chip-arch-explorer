@@ -1,4 +1,6 @@
-# 现代 AI 芯片架构观察室 0.7
+# 现代 AI 芯片架构观察室 0.8
+
+0.8：07的Scale-up/out新增DeepSeek-V3 MoE双域交互拓扑，12步dispatch→专家计算→combine，支持播放/暂停、前后单步、模块展开、4种路由分布、FP8/BF16逻辑载荷和URL恢复。依据V3技术报告与固定DeepEP V2.5源码，区别既有V4.1/SM100算子案例。
 
 0.7：统一浅色阅读界面、增强字号与视觉主次。RDMA首页增加七步张量旅程，可播放、暂停、前后单步、切换数据/控制视角、打开模块与恢复分享位置。新增可追溯的关键表述核查记录，细化SRNIC数字测试条件，补全真实SwiGLU调用的裁剪、路由权重与cast边界。
 
@@ -6,7 +8,7 @@
 
 在线入口：[芯片架构观察室](https://docluka77.github.io/ai-chip-arch-explorer/observatory/)。直接打开本目录 index.html 也能阅读，不需要安装或构建。官方远程图片与资料链接需要联网。
 
-新增：[07 RDMA与集群互连](https://docluka77.github.io/ai-chip-arch-explorer/observatory/?v=0.7#rdma) · 4张原论文图、6组图解模型，90条阅读文献、八条路线，SRNIC模块，有损/乱序，scale-up/out与开销实验。
+新增：[07 RDMA与集群互连](https://docluka77.github.io/ai-chip-arch-explorer/observatory/?v=0.8#rdma) · 4张原论文图、6组图解模型，90条阅读文献、八条路线，SRNIC模块，有损/乱序，scale-up/out与开销实验。
 
 新入口：[算子执行显微镜](https://docluka77.github.io/ai-chip-arch-explorer/observatory/#operator)。克隆仓库后，在本目录运行 `node scripts/serve.mjs` 预览，运行 `node scripts/check-all.mjs` 核对语法、矩阵结果、形状/数据格式和来源契约；不需要安装依赖。
 
@@ -60,3 +62,12 @@ DeepInfer是推理软件而非芯片。模型结构、软件引擎、硬件映�
 ### 0.7 核查范围
 
 重点复核RDMA WRITE/CQE/GPU可见性、RoCE/iWARP协议分层、SRNIC状态/资源/实验口径、scale-up/out边界、NVIDIA GB202与SM100/SM120区别、DeepSeek专家GEMM与后续激活、早期加速器职责类比。未逐句审读90篇全文，未做真实设备符合性测试。资料快照与复核日期分开记录，不能把今天复核解释为所有产品数据都在今天更新。
+
+### 0.8 MoE拓扑
+
+- 展开EP64中的A/B两个8GPU节点，其他6节点本token未选、未展开；专家编号与路由为人为教学映射。
+- 域内NVLink、GPU–NIC路径、跨节点RDMA（本例IB）分别画。B0即使没有目标expert，也承担转发。
+- 明确选择hybrid与allow_multiple_reduction=True；专家侧一次应用有效路由权重，combine只求和。
+- FP8 dispatch原始向量7KiB，BF16为14KiB；combine固定BF16。净载荷计数不等于线速、包数或实测时延。
+- 4种分布×2种精度×12步模型检查，验证映射、最多4组、权重守恒、回程箭头和分享状态。
+- [本轮依据与核查边界](REVIEW-v08.md)。未运行DeepEP或真实设备trace。
