@@ -26,7 +26,7 @@ Batch是A0发出的总token数，不是每GPU batch或用户并发。仅研究�
 - RDMA dispatch每个有远端目标的token一份；combine在层次预归约假设下返回一个节点贡献。
 - A域通信按不同目标GPU计数，排除源A0；B域排除入口B0，同GPU多个专家复用激活。
 - dispatch FP8数据为D byte，BF16为2D byte；combine固定BF16为2D byte。V4分别5 KiB和10 KiB。
-- 专家三次矩阵乘按6DI FLOP/expert-token：V4为70,778,880 FLOP，batch总量为B×6×6DI。shared、激活和其他工作另行排除。
+- 专家三次矩阵乘按6DI FLOP/expert-token：V4为70,778,880 FLOP，batch总量为B×6×6DI；单专家三矩阵参数量为3DI（V4为35,389,440参数，V3为44,040,192参数），页面同时统计全批激活专家数与单激活专家平均token数（Mₑ），用于衔接02算子显微镜中的局部权重复用概念。shared、激活和其他工作另行排除。
 
 ## 时间与资源约定
 

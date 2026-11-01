@@ -31,13 +31,15 @@
       remoteTokens+=cRemote;nvACopies+=nvA;nvBCopies+=nvB;
       chunks.push({index:chunks.length,start,count:group.length,loads,remoteTokens:cRemote,nvA,nvB,bytes:{aD:nvA*dispatchBytes,rD:cRemote*dispatchBytes,bD:nvB*dispatchBytes,bC:nvB*combineBytes,rC:cRemote*combineBytes,aC:nvA*combineBytes}});
     }
-    const maxLoad=Math.max(...rankLoads),mean=routes.length*profile.topK/16,assignments=routes.length*profile.topK,flopPerAssignment=6*profile.hidden*profile.intermediate;
+    const maxLoad=Math.max(...rankLoads),mean=routes.length*profile.topK/16,assignments=routes.length*profile.topK,flopPerAssignment=6*profile.hidden*profile.intermediate,paramsPerExpert=3*profile.hidden*profile.intermediate;
+    const rankActiveExperts=Array.from({length:16},(_,r)=>expertLoads.slice(r*profile.perGPU,(r+1)*profile.perGPU).filter(x=>x>0).length);
+    const activeExperts=expertLoads.filter(x=>x>0).length,maxExpertLoad=Math.max(...expertLoads),meanTokensPerActiveExpert=activeExperts>0?assignments/activeExperts:0;
     const localAssignments=rankLoads.slice(0,8).reduce((a,b)=>a+b,0),remoteAssignments=rankLoads.slice(8).reduce((a,b)=>a+b,0);
     const naiveNvACopies=rankLoads.slice(1,8).reduce((a,b)=>a+b,0),naiveNvBCopies=rankLoads.slice(9,16).reduce((a,b)=>a+b,0);
     const scaleBytesPerCopy=ctx.dtype==='bf16'?0:profile.hidden/32;
     const hottestA=pickHottest(rankLoads,0,7,true),hottestB=pickHottest(rankLoads,8,15,true);
     const hottest=rankLoads[hottestB]>=rankLoads[hottestA]&&rankLoads[hottestB]>0?hottestB:hottestA;
-    return {profile,routes,rankLoads,expertLoads,chunks,dispatchBytes,combineBytes,scaleBytesPerCopy,hotTokens,remoteTokens,nvACopies,nvBCopies,nvCopies:nvACopies+nvBCopies,naiveNvACopies,naiveNvBCopies,localAssignments,remoteAssignments,maxLoad,mean,imbalance:maxLoad/mean,hottest,hottestA,hottestB,assignments,flopPerAssignment,totalFlops:assignments*flopPerAssignment};
+    return {profile,routes,rankLoads,rankActiveExperts,expertLoads,activeExperts,maxExpertLoad,meanTokensPerActiveExpert,paramsPerExpert,chunks,dispatchBytes,combineBytes,scaleBytesPerCopy,hotTokens,remoteTokens,nvACopies,nvBCopies,nvCopies:nvACopies+nvBCopies,naiveNvACopies,naiveNvBCopies,localAssignments,remoteAssignments,maxLoad,mean,imbalance:maxLoad/mean,hottest,hottestA,hottestB,assignments,flopPerAssignment,totalFlops:assignments*flopPerAssignment};
   }
   function createJobs(work,p,mode){const jobs=[],finishes=[];const rate=p.tf*(mode==='overlap'?1-p.reserve/100:1),byId=new Map();
     function add(resource,kind,chunk,bytes,rows,deps,phase){if(bytes===0&&rows===0)return null;const compute=kind==='compute',lat=compute?p.launch:resource.startsWith('nv')?p.nvLat:p.rdLat,service=compute?rows*work.flopPerAssignment/(rate*1e6):bytes/((resource.startsWith('nv')?p.nv:p.rdma)*1000),id=jobs.length;
