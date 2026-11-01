@@ -1068,7 +1068,7 @@ D.papers=[
     ],
     "experiment": {
       "environment": "Two directly connected RNICs; 1024-byte RoCE MTU. Connection test: 16 threads/side, 512B SEND, 128-10K QPs. Loss test: 4KB messages, intermediate FPGA random drops, congestion control disabled. Larger networks are ns-3 simulations (up to 4096 servers), not a 100K-GPU deployment.",
-      "result": "Slides16-19 report 97Gbps and 3.3us in 100GE prototype experiments. The 18x metric is performant QPs per MB versus its CX-5 baseline, not 18x bandwidth or modern ConnectX-9 superiority.",
+      "result": "Single connection, two directly linked RNICs, 1024-byte RoCE MTU: about 97 Gb/s for messages larger than 4 KB; about 3.3 μs for 64-byte messages (§6.2). These are different message-size tests. The 18x metric is performant QPs per MB versus its CX-5 baseline, not 18x bandwidth or modern ConnectX-9 superiority.",
       "limit": "100GE FPGA研究原型；最多4096服务器网络为ns-3模拟，非十万GPU生产实测。"
     },
     "evidence_status": "Peer-reviewed paper / prototype and ns-3 evaluated",
@@ -1836,5 +1836,5 @@ const additions=[
   }
 ];
 for(const a of additions){if(!D.sources.some(v=>v.id===a.id))D.sources.push(a);if(!window.OBS_DATA.sources.some(v=>v.id===a.id))window.OBS_DATA.sources.push(a);}
-window.OBS_DATA.version='0.6.0';
+/* Release version is defined once in data.js. */
 })();

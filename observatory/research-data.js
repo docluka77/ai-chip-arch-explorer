@@ -1275,7 +1275,7 @@ window.OBS_CASE_DATA = {
     }
   ]
 };
-window.OBS_DATA.version='0.2.0';
+/* Release version is defined once in data.js. */
 window.OBS_DATA.sources.push(...[
   {
     "id": "detail-groq",

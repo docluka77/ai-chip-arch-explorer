@@ -1,0 +1,24 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+const project=fileURLToPath(new URL('../',import.meta.url)),root=fs.existsSync(path.join(project,'dist/index.html'))?path.join(project,'dist'):project;
+const sandbox={window:{},document:{querySelector:()=>null,dispatchEvent(){},addEventListener(){}},clearTimeout(){},cancelAnimationFrame(){},requestAnimationFrame(){return 1;},CustomEvent:class {}};
+vm.createContext(sandbox);
+for(const f of ['data','research-data','operator-data','operator-provenance','operator-context','rdma-data','rdma-evidence','rdma-library-data','rdma-visuals','rdma-library','rdma-story','review-ledger','rdma'])vm.runInContext(fs.readFileSync(path.join(root,f+'.js'),'utf8'),sandbox,{filename:f+'.js'});
+const W=sandbox.window,R=W.OBS_RDMA_STORY,O=W.OBS_RDMA;
+assert.equal(W.OBS_DATA.version,'0.7.0','one release version must survive all enrichment layers');
+assert.equal(R.steps.length,7);
+for(const s of R.steps){for(const id of s.refs)assert.ok(R.sources[id]&&R.sources[id][0].startsWith('https://'),s.short);for(const n of s.nodes)assert.ok(Number.isInteger(n)&&n>=0&&n<5);assert.ok(s.boundary.length>20&&s.dependency.length>20);}
+assert.ok(R.steps[4].body.includes('不自动'));
+assert.ok(R.steps[5].body.includes('local CQE'));
+assert.ok(R.steps[6].control.includes('SM120'));
+O.restore(new URLSearchParams('rdTab=start&rdStory=5&rdLens=control'));let state=O.location();assert.equal(state.story,5);assert.equal(state.lens,'control');assert.equal(state.playing,false);
+O.restore(new URLSearchParams('rdStory=999&rdLens=bad'));state=O.location();assert.equal(state.story,6);assert.equal(state.lens,'payload');
+O.restore(new URLSearchParams('rdStory=-3'));assert.equal(O.location().story,0);
+const rendered=R.render({story:0,lens:'payload'});assert.equal((rendered.match(/data-rs-device=/g)||[]).length,5);assert.equal((rendered.match(/data-rs-step=/g)||[]).length,7);assert.ok(!rendered.includes('undefined'));
+const swiglu=W.OBS_OPERATOR_DATA.steps.find(s=>s.id==='swiglu');assert.ok(swiglu.body.includes('swiglu_limit=10')&&swiglu.body.includes('topk_weights'));
+const source=fs.readFileSync(path.join(root,'operator.js'),'utf8');assert.ok(source.includes('router weight=1'));assert.ok(source.includes('clamp(limit=10)'));
+const ledger=W.OBS_REVIEW.render('rdma');assert.ok(ledger.includes('未逐句审读90篇全文'));assert.ok(ledger.includes('64-byte'));
+console.log('Experience checks: 7 dependency stages, source references, share-state bounds, release version, completion semantics, and SwiGLU scope.');

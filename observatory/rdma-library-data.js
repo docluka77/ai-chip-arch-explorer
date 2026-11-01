@@ -5668,5 +5668,5 @@ D.catalog={
   },
   "coverage": "按问题精选原始文献；关键内容/公开范围核对，不宣称穷尽所有研究或全文逐句审读。"
 };
-window.OBS_DATA.version='0.6.0';
+/* Release version is defined once in data.js. */
 })();

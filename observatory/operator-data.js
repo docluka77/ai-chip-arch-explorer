@@ -28,7 +28,7 @@
     {id:'done',title:'MMA 完成：等待异步计算的结果',short:'完成屏障',focus:'barrier',level:'tensor',code:7,path:'mma-done',k:4,verb:'提交完成通知并等待，才开始读累加区。',body:'MMA 发射与完成也有先后区别。完成屏障与相应的线程/异步内存排序保护后续 TMEM 读取。示意将依赖展开为单条主线；实际 kernel 会多缓冲、流水重叠，并可能使用双 CTA 协作。',state:['四个教学分片已累计','TMEM：C tile 完成','缓冲区复用受依赖保护'],why:'先计算后读取必须由真实同步语义保证，不能用动画相邻两帧替代。'},
     {id:'epilogue',title:'Epilogue：TMEM → 寄存器 → 共享内存',short:'Epilogue',focus:'registers',level:'sm',code:8,path:'epilogue',k:4,verb:'输出线程读回 FP32 结果，再转换/重排。',body:'这个内核的 epilogue 从 TMEM 取回累加值到线程寄存器，转换成 BF16 并放到输出共享内存缓冲。寄存器是线程的局部状态，TMEM 是矩阵指令使用的另一种存储，二者不能画成同一个盒子。',state:['FP32：TMEM → 寄存器','转换为 BF16','BF16 输出 tile → SMEM'],why:'矩阵核心擅长乘加；类型转换、地址计算、激活等还需要其他执行资源。'},
     {id:'store',title:'写回：TMA store 输出到全局内存',short:'写回',focus:'output',level:'gpu',code:9,path:'store',k:4,verb:'共享内存输出缓冲 → global C。',body:'所选 SM100 实现用 TMA store 把输出 tile 写入全局地址空间，并等待相关存储完成后再安全复用缓冲。全局存储可以经过缓存；图中 HBM 输出表示最终的显存驻留结果，不表示每条 store 都立即物理写入 HBM。',state:['C[Mₑ,4608]：BF16','输出按全局地址可寻址','缓存回写时机不在动画中建模'],why:'全局内存是下个 kernel 看见的接口；缓存、可见性与 stream 依赖仍需正确管理。'},
-    {id:'swiglu',title:'SwiGLU：gate 与 up 合成中间激活',short:'SwiGLU',focus:'vector',level:'sm',code:10,path:'activation',k:4,verb:'Y = SiLU(gate) ⊙ up，输出宽度 2304。',body:'后续激活/量化内核将 gate/up 分开并计算 SwiGLU，准备 down 投影的输入。这里只展开这次 gate/up GEMM，不把专家完整 MLP、MoE combine 或最终 token 都归给一次 Tensor Core 计算。',state:['gate：前 2304 个通道','up：后 2304 个通道','下一步：down 投影 → combine'],why:'复杂模型是矩阵、向量、通信和调度的组合；Tensor Core 不负责全部计算。'}
+    {id:'swiglu',title:'SwiGLU：gate 与 up 合成中间激活',short:'SwiGLU',focus:'vector',level:'sm',code:10,path:'activation',k:4,verb:'基础式：Y = SiLU(gate) ⊙ up；真实路径还含裁剪、路由权重与 cast。',body:'真实分解路径的后续激活/量化调用传入 config 的 swiglu_limit=10、topk_weights，并做 cast，为 down 投影准备输入。基础 SwiGLU 式只用于解释数学关系；这里不补猜底层融合内核的精确裁剪顺序。这里只展开这次 gate/up GEMM，不把专家完整 MLP、MoE combine 或最终 token 都归给一次 Tensor Core 计算。',state:['gate：前 2304 个通道','up：后 2304 个通道','下一步：down 投影 → combine'],why:'复杂模型是矩阵、向量、通信和调度的组合；Tensor Core 不负责全部计算。'}
   ];
   const modules={
     python:{name:'Python / 框架调用',where:'CPU 上的软件控制路径',summary:'提出张量运算、选内核、提交到 CUDA stream。',details:['示例从已经重排到本地专家的 token 开始。权重通常已经驻留在显存；没有隐含一次全模型 CPU → GPU 上传。','PyTorch 张量描述 dtype、shape、stride 和 device。Python 对象本身不是送入 Tensor Core 的数据。','CUDA 操作通常相对 CPU 异步；调试时 synchronize 会改变等待位置。'],refs:['op-mlp','op-cuda'],next:'scheduler'},
@@ -43,8 +43,8 @@
     tensor:{name:'Tensor Core / tcgen05 MMA',where:'SM100 的矩阵乘加执行资源',summary:'按指令 tile 做 D=A×B+C；输入描述符与累加存储各有约束。',details:['所选路径：A/B 主操作数由 SMEM 描述符描述；缩放因子和 FP32 累加结果使用 TMEM。','指令形状、软件 CTA tile、数学矩阵大小、物理乘法器阵列是四个不同层次。公开接口无法还原内部 PE 的全部布线。','4×4 图中的每个格子是一个可选择的数学输出 C[m,n]；不是一颗真实 Tensor Core 的 16 个 PE。'],refs:['op-gemm','op-tcgen'],next:'tmem'},
     tmem:{name:'TMEM / Tensor Memory',where:'SM100 的专用矩阵存储空间',summary:'保存矩阵累加结果，也可按指令路径放 scale 等数据。',details:['不同于 CUDA 普通 per-thread 寄存器，也不是 CUDA global memory。内核先分配并管理对应地址/列。','本例连续 MMA 累加在这里，epilogue 才用 tcgen05.ld 读回线程寄存器。','这条 TMEM 路径属于本页选择的 SM100 实现，不移植到 RTX 5090 的 SM120 示意中。'],refs:['op-tcgen','op-gemm'],next:'registers'},
     registers:{name:'寄存器 / epilogue 线程',where:'SM 内，线程各自的局部状态',summary:'读取累加值，转换、重排，再把输出写到 shared buffer。',details:['所选 SM100 内核：TMEM → registers → BF16 → shared output buffer → TMA store。','这些值分布给执行 epilogue 的线程。逻辑矩阵的第 m 行不等于某个 warp 的第 m 个 lane。','SM120 路径更依赖寄存器中的 MMA 操作数/累加器；应分别查对应指令的 lane 映射。'],refs:['op-gemm','op-sm120'],next:'output'},
-    output:{name:'全局输出 / TMA store',where:'shared output buffer → 全局 C 张量',summary:'让后续激活/投影 kernel 读取 BF16 结果。',details:['TMA store 本身也是异步操作，必须遵守输出缓冲的可见性、提交和复用规则。','全局写经过存储层次；图中的 HBM 结果表示显存驻留张量的归属，不逐周期模拟 L2 回写。','这是 gate/up 的中间输出；还需 SwiGLU、down projection 和专家加权合并。'],refs:['op-gemm','op-mlp'],next:'vector'},
-    vector:{name:'向量 / 激活与下一层',where:'SM 的通用执行资源及后续 kernel',summary:'把 gate/up 分开，做 SiLU 和逐元素乘法。',details:['SiLU(g)=g/(1+exp(−g))；SwiGLU=SiLU(gate)⊙up。真实中间宽度为2304。','激活、量化、寻址等不因为模型用了 Tensor Core 就消失。软件可将某些工作融合，降低中间流量。','本动画展示公开的分解路径。mega_moe 融合路径不应被错误解释为同样多次独立读写。'],refs:['op-mlp','op-gemm'],next:'python'}
+    output:{name:'全局输出 / TMA store',where:'shared output buffer → 全局 C 张量',summary:'让后续激活/投影 kernel 读取 BF16 结果。',details:['TMA store 本身也是异步操作，必须遵守输出缓冲的可见性、提交和复用规则。','全局写经过存储层次；图中的 HBM 结果表示显存驻留张量的归属，不逐周期模拟 L2 回写。','这是 gate/up 的中间输出；还需带裁剪/路由权重/cast 的激活步骤、down projection 和 combine，不能假设权重只在最终 combine 才应用。'],refs:['op-gemm','op-mlp'],next:'vector'},
+    vector:{name:'向量 / 激活与下一层',where:'SM 的通用执行资源及后续 kernel',summary:'SwiGLU 基础关系与真实融合参数分开看。',details:['基础教学式：SiLU(g)=g/(1+exp(−g))；SwiGLU=SiLU(gate)⊙up。真实中间宽度2304；固定 DeepInfer 调用还传入裁剪上限10和路由权重，并包含 cast，不能把基础式当成完整融合实现。','激活、量化、寻址等不因为模型用了 Tensor Core 就消失。软件可将某些工作融合，降低中间流量。','本动画展示公开的分解路径。mega_moe 融合路径不应被错误解释为同样多次独立读写。'],refs:['op-mlp','op-gemm'],next:'python'}
   };
   const python=[
     'x_local = dispatch_result   # 已到本地专家；不是CPU上传权重',
@@ -57,7 +57,7 @@
     '# GPU: wait MMA completion before consuming accumulator',
     '# GPU: TMEM → registers → BF16 → shared output',
     '# GPU: TMA store → global gate/up tensor',
-    'y = silu(gate) * up   # 再量化、down投影、combine'
+    '# next: SwiGLU + clamp(limit=10) + router weights + cast → down'
   ];
   window.OBS_OPERATOR_DATA={version:'0.3',reviewed:'2026-10-30',A,W,dot,steps,modules,python,sources};
   for(const s of sources)if(!window.OBS_DATA.sources.some(v=>v.id===s.id))window.OBS_DATA.sources.push(s);

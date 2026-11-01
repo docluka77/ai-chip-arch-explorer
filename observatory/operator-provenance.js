@@ -261,7 +261,7 @@ D.geometry={
     "https://github.com/deepseek-ai/DeepGEMM/blob/1fc9c66975ee322d628b3288534ca0e9ce12a64d/deep_gemm/include/deep_gemm/impls/sm100_fp8_fp4_gemm_1d1d.cuh#L64-L124"
   ]
 };
-D.apiCode="# shape准确的API伪代码，需先完成路由、量化和布局\n# A_q: FP8 [M_alloc,5120]；W_q: packed FP4 [G,4608,2560] bytes\n# SFA/SFB: UE8M0编码，每32个K一组，4个编码打包为int32\n# psum_end: 有效行末偏移；专家间还有alignment padding\nD = torch.empty((A_q.shape[0],4608), device='cuda', dtype=torch.bfloat16)\ndeep_gemm.m_grouped_fp8_fp4_gemm_nt_contiguous(\n    (A_q,SFA), (W_q,SFB), D, psum_end,\n    recipe_a=(1,32), recipe_b=(1,32),\n    use_psum_layout=True, expected_m_for_psum_layout=expected_m,\n)\n# 分解路径的下一个算子：SwiGLU + cast，再进入down投影\n# 上述张量的stride/转置/对齐由runtime工具生成，非朴素row-major scales";
+D.apiCode="# shape准确的API伪代码，需先完成路由、量化和布局\n# A_q: FP8 [M_alloc,5120]；W_q: packed FP4 [G,4608,2560] bytes\n# SFA/SFB: UE8M0编码，每32个K一组，4个编码打包为int32\n# psum_end: 有效行末偏移；专家间还有alignment padding\nD = torch.empty((A_q.shape[0],4608), device='cuda', dtype=torch.bfloat16)\ndeep_gemm.m_grouped_fp8_fp4_gemm_nt_contiguous(\n    (A_q,SFA), (W_q,SFB), D, psum_end,\n    recipe_a=(1,32), recipe_b=(1,32),\n    use_psum_layout=True, expected_m_for_psum_layout=expected_m,\n)\n# 分解路径的下一个算子：SwiGLU（clamp limit=10、topk_weights）+ cast，再进入down投影\n# 上述张量的stride/转置/对齐由runtime工具生成，非朴素row-major scales";
 D.callChain=[
   {
     "stage": "Python model",
@@ -390,7 +390,7 @@ D.modules.scheduler.details[2]='固定实现每CTA 256线程 / 8 warp。warp0选
 D.modules.scales.details[0]='FP8激活与FP4权重均按每行连续32个K一组使用scale。UE8M0编码二次幂，4个8-bit编码打包到int32；还需满足runtime规定的布局/对齐。';
 D.modules.registers.details[0]='固定swapAB epilogue：TMEM读回寄存器 → BF16 → STSM_T转置到shared输出缓冲 → TMA store。全局C的语义形状保持[M,N]。';
 for(const s of D.sources)if(s.type==='technical')s.type='official';
-window.OBS_DATA.version='0.3.0';
+/* Release version is defined once in data.js. */
 for(const s of additions){if(s.type==='technical')s.type='official';D.sources.push(s);if(!window.OBS_DATA.sources.some(v=>v.id===s.id))window.OBS_DATA.sources.push(s);}
 for(const [id,refs]of Object.entries({tma:['op-kernel','op-cutlass'],scheduler:['op-kernel','op-tcgen'],smem:['op-kernel','op-cutlass'],barrier:['op-kernel','op-epilogue'],scales:['op-kernel','op-linear'],tensor:['op-kernel','op-tcgen'],tmem:['op-kernel','op-tcgen'],registers:['op-epilogue','op-sm120-layout'],output:['op-epilogue','op-mlp']}))D.modules[id].refs=refs;
 })();
