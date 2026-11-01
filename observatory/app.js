@@ -27,9 +27,10 @@
   function play() {if(unknown()) return;state.playing=true;$('#play').textContent='Ⅱ';$('#play').setAttribute('aria-label','暂停数据流');$('#architecture').classList.add('running');clearInterval(timer);timer=setInterval(advance,state.speed);}
   function advance() {state.stage=(state.stage+1)%5;state.node=stageNodes()[state.stage];renderDiagram();renderInspector();renderStages();updateHash();}
   function selectChip(id) {pause();state.chip=id;state.layer=window.OBS_DETAIL.defaultLayer(current());state.stage=0;state.node=stageNodes()[0];renderExplore();updateHash();}
-  function renderSelector() {const ordered=[...chips].sort((a,b)=>(a.id==='rtx5090'?-1:b.id==='rtx5090'?1:0));$('#chip-selector').innerHTML=ordered.map(c=>`<button class="chip-option ${state.chip===c.id?'active':''} ${c.id==='rtx5090'?'recommended':''}" data-chip="${c.id}" aria-pressed="${state.chip===c.id}"><span class="chip-vendor">${c.vendor}</span><span class="chip-name">${c.short}</span><span class="chip-kind">${c.kind}</span></button>`).join('');}
+  const orderedChips = () => [...chips].sort((a,b)=>(a.id==='rtx5090'?-1:b.id==='rtx5090'?1:0));
+  function renderSelector() {const ordered=orderedChips();$('#chip-selector').innerHTML=ordered.map(c=>`<button class="chip-option ${state.chip===c.id?'active':''} ${c.id==='rtx5090'?'recommended':''}" data-chip="${c.id}" aria-pressed="${state.chip===c.id}"><span class="chip-vendor">${c.vendor}</span><span class="chip-name">${c.short}</span><span class="chip-kind">${c.kind}</span></button>`).join('');}
   function nodeDetails(c,id) {
-    const detailed=state.layer!=='overview'?window.OBS_DETAIL.info(id):null;if(detailed)return detailed;
+    const detailed=state.layer!=='overview'?window.OBS_DETAIL.info(id,state.phase):null;if(detailed)return detailed;
     const isConsumer=['rtx5090','rx9070'].includes(c.id);
     const isGroq=c.family==='groq', isTpu=c.family==='tpu',isHard=c.family==='hardwired',isUnknown=c.family==='unknown';
     const details={
@@ -41,7 +42,7 @@
     };
     return details[id]||details.memory;
   }
-  function renderInspector() {const c=current(),d=nodeDetails(c,state.node);$('#inspector').innerHTML=`<span class="eyebrow">INSIDE THE ARCHITECTURE</span><h3>${esc(d.title)}</h3><span class="detail-tag">${esc(d.tag)}</span><p>${esc(d.body)}</p><div class="insight"><span>为什么重要</span>${esc(d.insight)}</div><button class="source-link" data-evidence="${c.id}">查看证据与原始资料 ↗</button>${d.drill?`<button class="drill-button" data-layer="${d.drill}">继续进入 ${esc(d.drill)} ↗</button>`:''}`;}
+  function renderInspector() {const c=current(),d=nodeDetails(c,state.node),phaseTag=state.phase==='decode'?'Decode 逐 token 视角':'Prefill 读提示词 视角';$('#inspector').innerHTML=`<span class="eyebrow">INSIDE THE ARCHITECTURE</span><h3>${esc(d.title)}</h3><span class="detail-tag">${esc(d.tag)}</span><p>${esc(d.body)}</p><div class="insight"><span>为什么重要 · ${esc(d.phaseLabel||phaseTag)}</span>${esc(d.insight)}</div><button class="source-link" data-evidence="${c.id}">查看证据与原始资料 ↗</button>${d.drill?`<button class="drill-button" data-layer="${d.drill}">继续进入 ${esc(d.drillText||d.drill)} ↗</button>`:d.operatorLink?`<a class="drill-button" href="#operator">对比 SM100 算子显微镜 ↗</a>`:''}`;}
   function renderDiagram() {
     $('#layer-footnotes').hidden=true;$('#matrix-lab').hidden=true;
     if(window.OBS_DETAIL.render($('#architecture'),current(),state))return;
@@ -97,8 +98,8 @@
         svg+=text(263,366,'方格仅解释矩阵计算，不对应真实阵列尺寸。',9,'#6c8b64');
       } else {
         svg+=block('control',250,30,359,55,amd?(consumer?'RDNA 工作调度':'CDNA 5 · Wave32 工作调度'):'工作分发 / 线程调度','');
-        const unitName=amd?(consumer?'CU / AI':'矩阵 / 向量'):'SM / Tensor';
-        let units='';for(let i=0;i<4;i++){const x=265+i*84;units+=`<rect x="${x}" y="259" width="71" height="58" rx="3" fill="#29452f" stroke="#517446"/>${text(x+8,278,unitName,8,'#b1cd9f')}`+cells(x+9,290,4,1,8);}
+        const unitName=amd?(consumer?'CU + AI':'CU 阵列'):'SM + TC';
+        let units='';for(let i=0;i<4;i++){const x=265+i*84;units+=`<rect x="${x}" y="259" width="71" height="58" rx="3" fill="#294531" stroke="#5d7851"/>${text(x+9,277,unitName,8,'#bfd8ad','class="sv-mono" data-sub="1"')}`+cells(x+9,290,4,1,8);}
         svg+=block('compute',250,207,359,132,amd?(consumer?'RDNA 4 · 计算单元组':'CDNA 5 · 计算资源组'):'SM 组 · 可编程执行 + 矩阵加速','LOGICAL GROUPS / NOT TO SCALE',units);
         svg+=block('network',659,113,159,88,consumer?'主机 / PCIe':amd?'UALink / UALoE':'NVLink 6',consumer?'HOST SYSTEM':'SCALE-UP FABRIC',text(674,181,consumer?'消费级系统边界':'多 GPU 协作 / 同步',9,'#abc29c'));
         svg+=text(263,366,'单元数量为示意；不代表物理 SM / CU 数量。',9,'#6c8b64');
@@ -114,7 +115,7 @@
     const c=current(),names=stageNames();
     $('#stages').innerHTML=names.map((s,i)=>`<button data-stage="${i}" class="${state.stage===i?'active':state.stage>i?'complete':''}" aria-pressed="${state.stage===i}">${String(i+1).padStart(2,'0')} ${s}</button>`).join('');
     $('#stage-count').textContent=`0${state.stage+1} / 05`;
-    if(state.layer!=='overview'){const d=nodeDetails(c,stageNodes()[state.stage]);$('#stage-explainer').innerHTML=`<strong>导览 0${state.stage+1} / ${esc(d.title)}</strong><span class="stage-text">${esc(d.body)} 这是逐项阅读导览，不表示这些并行资源按此顺序串行运行。</span>`;$('#play').disabled=false;$('#play').title='按阅读顺序高亮模块，不表示硬件执行周期';return;}
+    if(state.layer!=='overview'){const d=nodeDetails(c,stageNodes()[state.stage]);$('#stage-explainer').innerHTML=`<strong>导览 0${state.stage+1} / ${esc(d.title)}（${state.phase==='decode'?'Decode 逐 token':'Prefill 读提示词'}）</strong><span class="stage-text">${esc(d.body)} <b>当前阶段重点：</b>${esc(d.insight)}（注：此为逐项阅读导览，不表示这些并行硬件资源按 1→5 串行启动。）</span>`;$('#play').disabled=false;$('#play').title='按阅读顺序高亮模块，不表示硬件执行周期';return;}
     const explanations=unknown()?[c.summary,c.storage,c.compute,c.network,c.tradeoff]:[
       state.phase==='prefill'?'输入提示词形成一批 token；下面观察的是一次前向计算的概念依赖。':'每轮输入上一个 token，并使用此前建立的上下文；整个生成过程反复执行。',
       c.family==='hardwired'?'进入模型专用路径。此处是解释分组，不把未披露的存储实现画成已知电路。':c.family==='groq'?'权重分布在片上 SRAM，编译器预先安排数据到达计算单元的时刻。':c.storage+'。靠近核心的数据复用减少重复搬运。',
@@ -125,7 +126,7 @@
     $('#stage-explainer').innerHTML=`<strong>${unknown()?'证据':'分镜'} 0${state.stage+1} / ${names[state.stage]}</strong><span class="stage-text">${esc(explanations[state.stage])}</span>`;
     $('#play').disabled=unknown();$('#play').title=unknown()?'资料不足，不播放推测的数据流':'概念分镜播放，不表示硬件时钟';
   }
-  function renderExplore() {const c=current();renderSelector();window.OBS_DETAIL.renderNav(c,state);window.OBS_DETAIL.renderGallery(c,state.layer);$('#chip-number').textContent=`${String(chips.indexOf(c)+1).padStart(2,'0')} / 10`;$('#chip-title').textContent=c.name;$('#chip-badge').textContent=c.statusLabel;$('#chip-badge').className='badge '+c.status;$$('[data-phase]').forEach(b=>{b.classList.toggle('active',b.dataset.phase===state.phase);b.setAttribute('aria-pressed',b.dataset.phase===state.phase);});renderDiagram();renderInspector();renderStages();$('#analysis-cards').innerHTML=c.cards.map((card,i)=>`<article class="analysis-card"><div class="card-label">0${i+1} <span>${esc(card[0])}</span></div><h3>${esc(card[1])}</h3><p>${esc(card[2])}</p></article>`).join('');$('#chip-evidence').innerHTML=`<strong>${c.status==='rumor'?'△ 报道线索':'↗ 可追溯资料'}</strong><span>${esc(c.notes)}</span><button data-evidence="${c.id}">${c.sources.length} 份来源 / 查看边界 ↗</button>`;}
+  function renderExplore() {const c=current(),ordered=orderedChips();renderSelector();window.OBS_DETAIL.renderNav(c,state);window.OBS_DETAIL.renderGallery(c,state.layer);$('#chip-number').textContent=`${String(ordered.indexOf(c)+1).padStart(2,'0')} / ${chips.length}`;$('#chip-title').textContent=c.name;$('#chip-badge').textContent=c.statusLabel;$('#chip-badge').className='badge '+c.status;$$('[data-phase]').forEach(b=>{b.classList.toggle('active',b.dataset.phase===state.phase);b.setAttribute('aria-pressed',b.dataset.phase===state.phase);});renderDiagram();renderInspector();renderStages();$('#analysis-cards').innerHTML=c.cards.map((card,i)=>`<article class="analysis-card"><div class="card-label">0${i+1} <span>${esc(card[0])}</span></div><h3>${esc(card[1])}</h3><p>${esc(card[2])}</p></article>`).join('');$('#chip-evidence').innerHTML=`<strong>${c.status==='rumor'?'△ 报道线索':'↗ 可追溯资料'}</strong><span>${esc(c.notes)}</span><button data-evidence="${c.id}">${c.sources.length} 份来源 / 查看边界 ↗</button>`;}
   function heading(kicker,title,desc){return `<div class="view-head"><div class="eyebrow">${kicker}</div><h1>${title}</h1><p>${desc}</p></div>`;}
   function chipOptions(selected){return chips.map(c=>`<option value="${c.id}" ${selected===c.id?'selected':''}>${esc(c.name)}</option>`).join('');}
   function showEvidence(id) {
@@ -191,7 +192,7 @@
     const target=event.target.closest('button,a,[data-node],[data-open-figure],[data-matrix-cell],[data-op-module],[data-rd-node],[data-mt-module],[data-mc-task]');if(!target)return;
     if(window.OBS_RDMA.click(target)){if(state.view==='rdma')updateHash();return;}
     if(window.OBS_OPERATOR.click(target)){if(state.view==='operator')updateHash();return;}
-    if(window.OBS_DETAIL.figureClick(target,current()))return;
+    if(window.OBS_DETAIL.figureClick(target,current(),state)){if(state.layer==='matrix'){renderInspector();renderStages();}return;}
     if(window.OBS_CASE.click(target)){if(state.view==='case')updateHash();return;}
     const nextLayer=target.dataset.layer||target.dataset.enterLayer;if(nextLayer){pause();state.layer=nextLayer;state.stage=0;state.node=stageNodes()[0];renderExplore();updateHash();if(target.dataset.enterLayer)$('#layer-nav').scrollIntoView({block:'start',behavior:'instant'});return;}
     if(target.dataset.chip){selectChip(target.dataset.chip);return;}
