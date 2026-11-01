@@ -42,7 +42,7 @@ Batch是A0发出的总token数，不是每GPU batch或用户并发。仅研究�
 
 手算检查点：V4 mixed，B=1、chunk=1，FP8，NVLink/RDMA各100 GB/s、有效算力100 TFLOP/s，启动与预留均0；RDMA dispatch=5120 byte、combine=10240 byte。串行参考1.6293888 μs，流水1.3221888 μs。该例一个分块仍有独立本地/远端分支重叠。
 
-省略：gate、pack、scale、padding、协议头/ACK/重传、拥塞、buffer限制、PCIe/GPU–NIC/HBM分项、权重内存、真实GEMM效率曲线、shared expert、attention、残差、激活/clamp/cast。输入有效速率允许以后校准，本版未校准。
+省略：gate、pack、scale（V4 `1×32` UE8M0或DeepEP `1×128` FP32均为160 B/份，约占5120 B净载荷的3.125%，页面已提供量化参照但未并入D字节净载荷主公式以保持手算检查点精确）、padding、协议头/ACK/重传、拥塞、buffer限制、PCIe/GPU–NIC/HBM分项、权重内存、真实GEMM效率曲线、shared expert、attention、残差、激活/clamp/cast。输入有效速率允许以后校准，本版未校准。
 
 ## 作者测量单独展示
 

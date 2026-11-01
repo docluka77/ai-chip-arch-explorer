@@ -33,9 +33,11 @@
     }
     const maxLoad=Math.max(...rankLoads),mean=routes.length*profile.topK/16,assignments=routes.length*profile.topK,flopPerAssignment=6*profile.hidden*profile.intermediate;
     const localAssignments=rankLoads.slice(0,8).reduce((a,b)=>a+b,0),remoteAssignments=rankLoads.slice(8).reduce((a,b)=>a+b,0);
+    const naiveNvACopies=rankLoads.slice(1,8).reduce((a,b)=>a+b,0),naiveNvBCopies=rankLoads.slice(9,16).reduce((a,b)=>a+b,0);
+    const scaleBytesPerCopy=ctx.dtype==='bf16'?0:profile.hidden/32;
     const hottestA=pickHottest(rankLoads,0,7,true),hottestB=pickHottest(rankLoads,8,15,true);
     const hottest=rankLoads[hottestB]>=rankLoads[hottestA]&&rankLoads[hottestB]>0?hottestB:hottestA;
-    return {profile,routes,rankLoads,expertLoads,chunks,dispatchBytes,combineBytes,hotTokens,remoteTokens,nvACopies,nvBCopies,nvCopies:nvACopies+nvBCopies,localAssignments,remoteAssignments,maxLoad,mean,imbalance:maxLoad/mean,hottest,hottestA,hottestB,assignments,flopPerAssignment,totalFlops:assignments*flopPerAssignment};
+    return {profile,routes,rankLoads,expertLoads,chunks,dispatchBytes,combineBytes,scaleBytesPerCopy,hotTokens,remoteTokens,nvACopies,nvBCopies,nvCopies:nvACopies+nvBCopies,naiveNvACopies,naiveNvBCopies,localAssignments,remoteAssignments,maxLoad,mean,imbalance:maxLoad/mean,hottest,hottestA,hottestB,assignments,flopPerAssignment,totalFlops:assignments*flopPerAssignment};
   }
   function createJobs(work,p,mode){const jobs=[],finishes=[];const rate=p.tf*(mode==='overlap'?1-p.reserve/100:1),byId=new Map();
     function add(resource,kind,chunk,bytes,rows,deps,phase){if(bytes===0&&rows===0)return null;const compute=kind==='compute',lat=compute?p.launch:resource.startsWith('nv')?p.nvLat:p.rdLat,service=compute?rows*work.flopPerAssignment/(rate*1e6):bytes/((resource.startsWith('nv')?p.nv:p.rdma)*1000),id=jobs.length;
@@ -67,13 +69,15 @@
         for(const id of children[best.id]){if(best.end>releases[id]){releases[id]=best.end;dependencyLast[id]=best.id;}if(--missing[id]===0)insert(jobs[id]);}
       }
     }
-    const total=Math.max(0,...jobs.map(j=>j.end)),busy={},critical={nvlink:0,rdma:0,compute:0},criticalService={nvlink:0,rdma:0,compute:0},criticalLatency={nvlink:0,rdma:0,compute:0},criticalIds=[];
-    for(const j of jobs)busy[j.resource]=(busy[j.resource]||0)+j.duration;
+    const total=Math.max(0,...jobs.map(j=>j.end)),busy={},busyService={},busyLatency={},utilization={},critical={nvlink:0,rdma:0,compute:0},criticalService={nvlink:0,rdma:0,compute:0},criticalLatency={nvlink:0,rdma:0,compute:0},criticalIds=[];
+    for(const j of jobs){busy[j.resource]=(busy[j.resource]||0)+j.duration;busyService[j.resource]=(busyService[j.resource]||0)+j.service;busyLatency[j.resource]=(busyLatency[j.resource]||0)+j.latency;}
+    for(const [k,v]of Object.entries(busy))utilization[k]=total>0?v/total:0;
+    let maxGpuBusy=0;for(let r=0;r<16;r++)if((busy['gpu-'+r]||0)>maxGpuBusy)maxGpuBusy=busy['gpu-'+r];
     let cur=jobs.reduce((a,b)=>!a||b.end>a.end?b:a,null);const seen=new Set();
     while(cur&&!seen.has(cur.id)){seen.add(cur.id);cur.critical=true;critical[cur.kind]+=cur.duration;criticalService[cur.kind]+=cur.service;criticalLatency[cur.kind]+=cur.latency;criticalIds.push(cur.id);cur=cur.blocker===null||cur.blocker===undefined?null:jobs[cur.blocker];}
     criticalIds.reverse();
     const startupTotal=criticalLatency.nvlink+criticalLatency.rdma+criticalLatency.compute,serviceTotal=criticalService.nvlink+criticalService.rdma+criticalService.compute,startupShare=total>0?startupTotal/total:0;
-    return {mode,total,jobs,busy,critical,criticalService,criticalLatency,startupTotal,serviceTotal,startupShare,criticalIds,effectiveTF:made.rate};
+    return {mode,total,jobs,busy,busyService,busyLatency,utilization,maxGpuBusy,critical,criticalService,criticalLatency,startupTotal,serviceTotal,startupShare,criticalIds,effectiveTF:made.rate};
   }
   function run(inputs={},context={},sensitivity=true){const p={...defaults,...inputs},ctx={profile:'v4',scenario:'mixed',dtype:'fp8',...context};const error=valid(p);if(error)return {error};const work=generate(p,ctx),serial=schedule(work,p,'serial'),pipeline=schedule(work,p,'overlap'),chosen=p.overlap?pipeline:serial;
     const result={p,ctx,work,serial,pipeline,chosen,speedup:serial.total/pipeline.total,bytes:work.chunks.reduce((a,c)=>{for(const [k,v]of Object.entries(c.bytes))a[k]=(a[k]||0)+v;return a;},{}),sensitivity:[],startupGain:0,startupDominated:false};
