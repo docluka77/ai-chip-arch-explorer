@@ -63,52 +63,135 @@
     }
   </style>
 </head>
-<body class="bg-white text-slate-800 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-slate-900 overflow-x-hidden">
+<body class="bg-slate-50/40 text-slate-800 min-h-screen flex flex-col selection:bg-indigo-600 selection:text-white overflow-x-hidden">
 
   <!-- Top Navigation Header -->
   <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-md">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20 font-bold text-slate-950 text-lg mono">
-          AI
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 via-violet-600 to-cyan-500 flex items-center justify-center shadow-md shadow-indigo-500/20 font-bold text-white text-sm mono">
+          01/02
         </div>
         <div>
-          <div class="flex items-center gap-2">
-            <h1 class="text-base sm:text-lg font-bold tracking-tight text-slate-900">DNN Accelerator Architecture Explorer</h1>
-            <span class="hidden sm:inline-block text-xs px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-700 border border-indigo-500/30 font-medium">Interactive Hardware Visualizer</span>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="text-base sm:text-lg font-bold tracking-tight text-slate-900">AI 芯片架构与 MAESTRO 空间探索器</h1>
+            <span class="text-[11px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold">Page 01 · 经典加速器与 DSE</span>
           </div>
-          <p class="text-xs text-slate-500">Eyeriss (MIT) · ShiDianNao (ICT CAS) · NVDLA (NVIDIA) 微架构、存储层次与数据流交互式解析</p>
+          <p class="text-xs text-slate-500">Eyeriss (MIT) · ShiDianNao (ICT CAS) · NVDLA (NVIDIA) · Transformer 映射 · MAESTRO 指令探索</p>
         </div>
       </div>
 
-      <!-- Main View Switcher & GitHub Modal Button -->
+      <!-- Main View Switcher & Cross-Page Links -->
       <div class="flex items-center gap-2 flex-wrap">
-        <div class="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200" role="tablist">
-          <button id="nav-tab-explorer" type="button" data-mainview="explorer" class="main-view-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all bg-indigo-600 text-white shadow">
-            架构拓扑与数据流仿真
+        <div class="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200 flex-wrap" role="tablist" aria-label="核心视图切换">
+          <button id="nav-tab-explorer" type="button" data-mainview="explorer" class="main-view-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all bg-indigo-600 text-white shadow inline-flex items-center gap-1.5">
+            <span>架构拓扑与数据流仿真</span>
           </button>
-          <button id="nav-tab-compare" type="button" data-mainview="compare" class="main-view-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-500 hover:text-slate-900">
-            横向对比与算力映射器
+          <button id="nav-tab-compare" type="button" data-mainview="compare" class="main-view-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-600 hover:text-slate-900 inline-flex items-center gap-1.5">
+            <span>横向对比与算力映射器</span>
           </button>
-          <button id="nav-tab-transformer" type="button" data-mainview="transformer" class="main-view-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1">
-            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+          <button id="nav-tab-transformer" type="button" data-mainview="transformer" class="main-view-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-600 hover:text-slate-900 inline-flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
             <span>Transformer 适配分析</span>
           </button>
-          <button id="nav-tab-maestro" type="button" data-mainview="maestro" class="main-view-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1">
-            <span class="w-2 h-2 rounded-full bg-violet-600"></span>
+          <button id="nav-tab-maestro" type="button" data-mainview="maestro" class="main-view-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-600 hover:text-slate-900 inline-flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-violet-600 shrink-0"></span>
             <span>MAESTRO 空间探索 (DSE)</span>
           </button>
         </div>
-        <button id="btn-open-github-modal" type="button" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-xs sm:text-sm font-medium text-slate-800 flex items-center gap-1.5 transition-colors">
-          <svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-          <span>GitHub 部署指南</span>
+
+        <button id="btn-share-view" type="button" class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-300 text-xs font-medium text-slate-700 inline-flex items-center gap-1 transition-colors" title="复制当前视图直达链接">
+          <span id="share-view-label">分享视图 ↗</span>
+        </button>
+
+        <a href="observatory/index.html" class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold inline-flex items-center gap-1.5 shadow-sm transition-colors" title="前往网页二：现代 AI 芯片架构观察室 v0.9.4">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>网页 02：现代芯片观察室 v0.9.4 ↗</span>
+        </a>
+
+        <button id="btn-open-github-modal" type="button" class="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-xs font-medium text-slate-700 inline-flex items-center gap-1 transition-colors" title="所有页面直达链接与 GitHub 说明">
+          <svg class="w-3.5 h-3.5 text-slate-700" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          <span class="hidden sm:inline">导航索引</span>
         </button>
       </div>
     </div>
   </header>
 
   <!-- Main Content Area -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-5 space-y-6">
+
+    <!-- ==================== PROJECT START PORTAL: 2 CORE WEBPAGES & DIRECT SHOWCASE LINKS ==================== -->
+    <section id="project-showcase-portal" class="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 text-white rounded-2xl p-4 sm:p-5 shadow-md border border-slate-800">
+      <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3.5 border-b border-slate-800">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-[11px] mono uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 font-semibold">Project Showcase Index · 核心展示总入口</span>
+          <h2 class="text-sm sm:text-base font-bold text-white">本项目共包含 2 个独立交互式网页：从「经典加速器数据流」到「现代大模型芯片与 RDMA 集群」</h2>
+        </div>
+        <div class="flex items-center gap-3 text-xs">
+          <a href="https://github.com/docluka77/ai-chip-arch-explorer" target="_blank" rel="noopener noreferrer" class="text-slate-300 hover:text-white underline inline-flex items-center gap-1">
+            <span>GitHub 仓库</span>
+            <span>↗</span>
+          </a>
+          <button id="btn-toggle-portal" type="button" class="text-slate-300 hover:text-white px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors">
+            收起导航 ▲
+          </button>
+        </div>
+      </div>
+
+      <div id="portal-cards-body" class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <!-- Webpage 1 Card (Current Page) -->
+        <div class="lg:col-span-6 bg-slate-800/80 border border-indigo-500/40 rounded-xl p-3.5 flex flex-col justify-between space-y-3">
+          <div>
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-indigo-500/25 text-indigo-200 border border-indigo-400/30">网页 01 · 当前页面 (index.html)</span>
+              <span class="text-[11px] mono text-slate-400">Eyeriss · ShiDianNao · NVDLA · MAESTRO</span>
+            </div>
+            <h3 class="text-sm sm:text-base font-bold text-white mt-1.5">经典 DNN 加速器微架构、Transformer 映射与 MAESTRO 空间探索</h3>
+            <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+              聚焦片上数据流范式（Row-Stationary / Output-Stationary / Atomic-C×K）、周期级 PE 阵列交互仿真、算子向 Transformer 迁移时的硬件瓶颈，以及 MAESTRO `.m` 指令与四维复用 DSE。
+            </p>
+          </div>
+          <div class="pt-2 border-t border-slate-700/80">
+            <div class="text-[11px] text-slate-400 mb-1.5 font-medium">本页 4 大核心展示视图直达（点击即切换）：</div>
+            <div class="flex flex-wrap gap-1.5">
+              <a href="#explorer" data-jumpview="explorer" class="portal-view-link px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-colors">01 架构拓扑与周期级仿真</a>
+              <a href="#compare" data-jumpview="compare" class="portal-view-link px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-100 transition-colors">02 横向对比与算力映射器</a>
+              <a href="#transformer" data-jumpview="transformer" class="portal-view-link px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-100 transition-colors">03 Transformer 6 算子沙盘</a>
+              <a href="#maestro" data-jumpview="maestro" class="portal-view-link px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-100 transition-colors">04 MAESTRO 指令与硬件 DSE</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Webpage 2 Card (Observatory Page) -->
+        <div class="lg:col-span-6 bg-gradient-to-br from-indigo-950/90 to-slate-800/90 border border-emerald-500/40 rounded-xl p-3.5 flex flex-col justify-between space-y-3">
+          <div>
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">网页 02 · 现代架构观察室 (observatory/index.html)</span>
+              <a href="observatory/index.html" class="text-xs font-bold text-emerald-300 hover:text-emerald-200 underline inline-flex items-center gap-1">
+                <span>进入观察室 v0.9.4</span>
+                <span>↗</span>
+              </a>
+            </div>
+            <h3 class="text-sm sm:text-base font-bold text-white mt-1.5">现代 AI 芯片架构观察室 v0.9.4（10 款芯片 · DeepSeek · 算子显微镜 · RDMA）</h3>
+            <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+              从官方原图逐层拆解 Blackwell (L0→L5)、TPU、Groq、Taalas、MI455X、昇腾与国产芯片；追踪 DeepSeek-V4.1 Flash、SM100 Tensor Core 15 步显微镜与 EP64 双域 RDMA/SRNIC 互连。
+            </p>
+          </div>
+          <div class="pt-2 border-t border-slate-700/80">
+            <div class="text-[11px] text-slate-400 mb-1.5 font-medium">观察室核心展示模块一键直达：</div>
+            <div class="flex flex-wrap gap-1.5">
+              <a href="observatory/index.html#explore" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors">01 从原图拆 10 款芯片 (L0–L5) ↗</a>
+              <a href="observatory/index.html#case" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-100 transition-colors">02 DeepSeek V4.1 推理 ↗</a>
+              <a href="observatory/index.html#operator" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-100 transition-colors">↳ SM100 算子执行显微镜 ↗</a>
+              <a href="observatory/index.html#rdma" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-100 transition-colors">07 RDMA / SRNIC 与 MoE 双域拓扑 ↗</a>
+              <a href="observatory/index.html#lab" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-100 transition-colors">03 瓶颈实验 ↗</a>
+              <a href="observatory/index.html#compare" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-100 transition-colors">04 设计差异对照 ↗</a>
+              <a href="observatory/index.html#sources" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-100 transition-colors">05 161 份原始资料 ↗</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <!-- ==================== VIEW 1: ARCHITECTURE EXPLORER & SIMULATOR ==================== -->
     <section id="view-explorer" class="space-y-6">
@@ -276,7 +359,15 @@
             <button id="btn-sim-reset" type="button" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-medium text-slate-700 border border-slate-300 transition-colors">
               重置 (T=0)
             </button>
-            <div class="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs mono text-sky-600 font-semibold">
+            <div class="inline-flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200" role="group" aria-label="周期直达">
+              <button type="button" data-simcycle="0" class="sim-cycle-pill px-2 py-0.5 rounded-lg text-xs mono font-semibold bg-indigo-600 text-white">T0</button>
+              <button type="button" data-simcycle="1" class="sim-cycle-pill px-2 py-0.5 rounded-lg text-xs mono font-medium text-slate-600 hover:text-slate-900">T1</button>
+              <button type="button" data-simcycle="2" class="sim-cycle-pill px-2 py-0.5 rounded-lg text-xs mono font-medium text-slate-600 hover:text-slate-900">T2</button>
+              <button type="button" data-simcycle="3" class="sim-cycle-pill px-2 py-0.5 rounded-lg text-xs mono font-medium text-slate-600 hover:text-slate-900">T3</button>
+              <button type="button" data-simcycle="4" class="sim-cycle-pill px-2 py-0.5 rounded-lg text-xs mono font-medium text-slate-600 hover:text-slate-900">T4</button>
+              <button type="button" data-simcycle="5" class="sim-cycle-pill px-2 py-0.5 rounded-lg text-xs mono font-medium text-slate-600 hover:text-slate-900">T5</button>
+            </div>
+            <div class="hidden sm:block px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs mono text-sky-600 font-semibold">
               Cycle <span id="sim-cycle-num">0</span> / 5
             </div>
           </div>
@@ -919,36 +1010,78 @@
 
     </section>
 
+    <!-- Bottom Bridge to Webpage 02: Modern AI Chip Architecture Observatory -->
+    <section class="bg-gradient-to-r from-indigo-50 via-white to-emerald-50 border border-indigo-200 rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+      <div class="max-w-3xl">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">Next Step · 跨代架构演进</span>
+          <span class="text-xs text-slate-500 mono">CNN Spatial Array → Blackwell Tensor Core & RDMA MoE Fabric</span>
+        </div>
+        <h3 class="text-sm sm:text-base font-bold text-slate-900">看完经典加速器与 MAESTRO？继续进入「网页 02：现代 AI 芯片架构观察室 v0.9.4」</h3>
+        <p class="text-xs text-slate-600 mt-0.5 leading-relaxed">
+          沿着一个 Token 的路径，逐层拆解 NVIDIA Blackwell (L0→L5)、TPU、Groq、Taalas、MI455X 与国产芯片，深入 DeepSeek-V4.1 Flash 算子执行显微镜与 EP64 双域 RDMA/SRNIC 互连拓扑。
+        </p>
+      </div>
+      <div class="flex items-center gap-2 flex-wrap">
+        <a href="observatory/index.html#explore" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold shadow-sm transition-colors inline-flex items-center gap-1.5">
+          <span>进入现代芯片观察室</span>
+          <span>↗</span>
+        </a>
+        <a href="observatory/index.html#operator" class="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-semibold transition-colors">
+          算子显微镜 ↗
+        </a>
+        <a href="observatory/index.html#rdma" class="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-semibold transition-colors">
+          RDMA & MoE 拓扑 ↗
+        </a>
+      </div>
+    </section>
+
   </main>
 
-  <!-- GitHub Deployment & Source Export Modal -->
-  <div id="github-modal" class="fixed inset-0 z-50 hidden bg-slate-100/40 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-slate-100 border border-slate-300 rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl space-y-4">
+  <!-- Project Navigation Directory & GitHub Deployment Modal -->
+  <div id="github-modal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between border-b border-slate-200 pb-3">
         <div class="flex items-center gap-2">
-          <svg class="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-          <h3 class="text-base sm:text-lg font-bold text-slate-900">如何将此可视化项目部署到 GitHub Pages</h3>
+          <svg class="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          <h3 class="text-base sm:text-lg font-bold text-slate-900">项目双网页全量导航索引 & 本地/GitHub 运行说明</h3>
         </div>
         <button id="btn-close-github-modal" type="button" class="text-slate-500 hover:text-slate-900 px-2 py-1 rounded-lg text-sm">✕</button>
       </div>
 
-      <div class="space-y-3 text-xs sm:text-sm text-slate-700">
-        <p>本前端页面采用<strong>零构建依赖的单文件架构 (Single-File HTML5 + Tailwind CSS + Chart.js + 原生交互式 SVG)</strong>，无需 Node.js 编译即可直接托管到 GitHub Pages：</p>
-        <div class="bg-slate-50 rounded-xl border border-slate-200 p-3.5 mono text-xs text-emerald-700 space-y-1 overflow-x-auto">
-          <div># 1. 解压仓库包或将本文件重命名为 index.html</div>
-          <div>git init</div>
-          <div>git add index.html README.md .nojekyll</div>
-          <div>git commit -m "feat: add interactive Eyeriss, ShiDianNao, and NVDLA architecture visualizer"</div>
-          <div>git branch -M main</div>
-          <div>git remote add origin https://github.com/&lt;your-username&gt;/&lt;repo-name&gt;.git</div>
-          <div>git push -u origin main</div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
+          <div class="font-bold text-indigo-700">网页 01：经典加速器与 MAESTRO (index.html)</div>
+          <ul class="space-y-1.5 text-slate-700">
+            <li>• <a href="#explorer" class="text-indigo-600 hover:underline font-medium">架构拓扑与周期级仿真 (#explorer)</a></li>
+            <li>• <a href="#compare" class="text-indigo-600 hover:underline font-medium">横向对比与算力映射器 (#compare)</a></li>
+            <li>• <a href="#transformer" class="text-indigo-600 hover:underline font-medium">Transformer 适配分析 (#transformer)</a></li>
+            <li>• <a href="#maestro" class="text-indigo-600 hover:underline font-medium">MAESTRO 空间探索 DSE (#maestro)</a></li>
+          </ul>
         </div>
-        <p class="text-xs text-slate-500">推送后，在 GitHub 仓库进入 <strong>Settings → Pages → Build and deployment</strong>，将 Branch 选择为 <code>main / (root)</code> 并保存，约 30 秒即可生成公开在线演示网址。</p>
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
+          <div class="font-bold text-emerald-700">网页 02：现代芯片观察室 (observatory/index.html)</div>
+          <ul class="space-y-1.5 text-slate-700">
+            <li>• <a href="observatory/index.html#explore" class="text-emerald-700 hover:underline font-medium">01 从原图拆 10 款芯片 (L0–L5) ↗</a></li>
+            <li>• <a href="observatory/index.html#case" class="text-emerald-700 hover:underline font-medium">02 DeepSeek-V4.1 推理案例 ↗</a></li>
+            <li>• <a href="observatory/index.html#operator" class="text-emerald-700 hover:underline font-medium">↳ SM100 算子执行显微镜 ↗</a></li>
+            <li>• <a href="observatory/index.html#rdma" class="text-emerald-700 hover:underline font-medium">07 RDMA / SRNIC 与 MoE 双域拓扑 ↗</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="space-y-2.5 text-xs sm:text-sm text-slate-700">
+        <p>两个网页均为<strong>零构建依赖的纯静态前端</strong>，直接双击打开或通过本地静态服务预览，也可直接托管于 GitHub Pages：</p>
+        <div class="bg-slate-900 rounded-xl border border-slate-800 p-3.5 mono text-xs text-emerald-400 space-y-1 overflow-x-auto">
+          <div># 本地启动预览服务与运行自动化校验脚本</div>
+          <div>node observatory/scripts/serve.mjs</div>
+          <div>node observatory/scripts/check-all.mjs</div>
+        </div>
       </div>
 
       <div class="flex items-center justify-between pt-3 border-t border-slate-200">
-        <button id="btn-copy-commands" type="button" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors">
-          复制 Git 部署命令
+        <button id="btn-copy-commands" type="button" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-colors">
+          复制本地预览与校验命令
         </button>
         <span id="copy-toast" class="text-xs text-emerald-600 font-medium opacity-0 transition-opacity">✓ 已复制到剪贴板</span>
         <button id="btn-close-github-modal-bottom" type="button" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium">
@@ -959,13 +1092,18 @@
   </div>
 
   <!-- Footer -->
-  <footer class="border-t border-slate-200 bg-slate-50 py-4 px-4 sm:px-6 text-xs text-slate-500">
+  <footer class="border-t border-slate-200 bg-white py-4 px-4 sm:px-6 text-xs text-slate-500">
     <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-      <div>DNN Accelerator Architecture Visualizer · 支持 GitHub Pages 静态部署</div>
-      <div class="flex items-center gap-4">
-        <a href="https://courses.cs.washington.edu/courses/cse550/21au/papers/CSE550.Eyeriss.pdf" target="_blank" rel="noopener noreferrer" class="hover:text-indigo-600 underline">Eyeriss (JSSC'17)</a>
+      <div class="flex items-center gap-3 flex-wrap">
+        <span class="font-semibold text-slate-700">AI Chip Architecture Explorer · Page 01</span>
+        <span>·</span>
+        <a href="observatory/index.html" class="text-indigo-600 hover:text-indigo-800 font-semibold underline">前往 Page 02：现代 AI 芯片架构观察室 v0.9.4 ↗</a>
+      </div>
+      <div class="flex items-center gap-4 flex-wrap">
+        <a href="https://courses.cs.washington.edu/courses/cse550/21au/papers/CSE550.Eyeriss.pdf" target="_blank" rel="noopener noreferrer" class="hover:text-indigo-600 underline">Eyeriss (ISCA'16/JSSC'17)</a>
         <a href="https://dl.acm.org/doi/pdf/10.1145/2749469.2750389" target="_blank" rel="noopener noreferrer" class="hover:text-emerald-600 underline">ShiDianNao (ISCA'15)</a>
-        <a href="https://nvdla.org/hw/v1/hwarch.html" target="_blank" rel="noopener noreferrer" class="hover:text-amber-600 underline">NVDLA Spec (v1)</a>
+        <a href="https://nvdla.org/hw/v1/hwarch.html" target="_blank" rel="noopener noreferrer" class="hover:text-amber-600 underline">NVDLA Spec</a>
+        <a href="https://arxiv.org/html/1805.02566v6" target="_blank" rel="noopener noreferrer" class="hover:text-violet-600 underline">MAESTRO (MICRO'19)</a>
       </div>
     </div>
   </footer>
@@ -1708,32 +1846,32 @@
 
               <!-- Mini 3x4 visual grid of PEs inside Array -->
               <g transform="translate(458, 76)">
-                <rect x="0" y="0" width="38" height="28" rx="4" fill="#1e1b4b" stroke="#818cf8"/>
-                <text x="19" y="18" text-anchor="middle" fill="#1e1b4b" font-size="9.5" font-weight="600">PE0,0</text>
-                <rect x="48" y="0" width="38" height="28" rx="4" fill="#1e1b4b" stroke="#818cf8"/>
-                <text x="67" y="18" text-anchor="middle" fill="#1e1b4b" font-size="9.5" font-weight="600">PE0,1</text>
-                <rect x="96" y="0" width="38" height="28" rx="4" fill="#1e1b4b" stroke="#818cf8"/>
-                <text x="115" y="18" text-anchor="middle" fill="#1e1b4b" font-size="9.5" font-weight="600">PE0,2</text>
-                <rect x="144" y="0" width="38" height="28" rx="4" fill="#1e1b4b" stroke="#818cf8"/>
-                <text x="163" y="18" text-anchor="middle" fill="#1e1b4b" font-size="9.5" font-weight="600">PE0,13</text>
+                <rect x="0" y="0" width="38" height="28" rx="4" fill="#eef2ff" stroke="#6366f1" stroke-width="1.2"/>
+                <text x="19" y="18" text-anchor="middle" fill="#312e81" font-size="9.5" font-weight="700">PE0,0</text>
+                <rect x="48" y="0" width="38" height="28" rx="4" fill="#eef2ff" stroke="#6366f1" stroke-width="1.2"/>
+                <text x="67" y="18" text-anchor="middle" fill="#312e81" font-size="9.5" font-weight="700">PE0,1</text>
+                <rect x="96" y="0" width="38" height="28" rx="4" fill="#eef2ff" stroke="#6366f1" stroke-width="1.2"/>
+                <text x="115" y="18" text-anchor="middle" fill="#312e81" font-size="9.5" font-weight="700">PE0,2</text>
+                <rect x="144" y="0" width="38" height="28" rx="4" fill="#eef2ff" stroke="#6366f1" stroke-width="1.2"/>
+                <text x="163" y="18" text-anchor="middle" fill="#312e81" font-size="9.5" font-weight="700">PE0,13</text>
 
                 <rect x="0" y="38" width="38" height="28" rx="4" fill="#f8fafc" stroke="#6366f1"/>
-                <text x="19" y="56" text-anchor="middle" fill="#334155" font-size="9.5">PE1,0</text>
-                <rect x="48" y="38" width="38" height="28" rx="4" fill="#d1fae5" stroke="#34d399"/>
-                <text x="67" y="56" text-anchor="middle" fill="#065f46" font-size="9.5">PE1,1</text>
+                <text x="19" y="56" text-anchor="middle" fill="#334155" font-size="9.5" font-weight="600">PE1,0</text>
+                <rect x="48" y="38" width="38" height="28" rx="4" fill="#d1fae5" stroke="#10b981" stroke-width="1.2"/>
+                <text x="67" y="56" text-anchor="middle" fill="#065f46" font-size="9.5" font-weight="700">PE1,1</text>
                 <rect x="96" y="38" width="38" height="28" rx="4" fill="#f8fafc" stroke="#6366f1"/>
-                <text x="115" y="56" text-anchor="middle" fill="#334155" font-size="9.5">PE1,2</text>
+                <text x="115" y="56" text-anchor="middle" fill="#334155" font-size="9.5" font-weight="600">PE1,2</text>
                 <rect x="144" y="38" width="38" height="28" rx="4" fill="#f8fafc" stroke="#6366f1"/>
-                <text x="163" y="56" text-anchor="middle" fill="#334155" font-size="9.5">PE1,13</text>
+                <text x="163" y="56" text-anchor="middle" fill="#334155" font-size="9.5" font-weight="600">PE1,13</text>
 
-                <rect x="0" y="76" width="38" height="28" rx="4" fill="#78350f" stroke="#fbbf24"/>
-                <text x="19" y="94" text-anchor="middle" fill="#92400e" font-size="9.5">PE11,0</text>
-                <rect x="48" y="76" width="38" height="28" rx="4" fill="#78350f" stroke="#fbbf24"/>
-                <text x="67" y="94" text-anchor="middle" fill="#92400e" font-size="9.5">PE11,1</text>
-                <rect x="96" y="76" width="38" height="28" rx="4" fill="#78350f" stroke="#fbbf24"/>
-                <text x="115" y="94" text-anchor="middle" fill="#92400e" font-size="9.5">PE11,2</text>
-                <rect x="144" y="76" width="38" height="28" rx="4" fill="#78350f" stroke="#fbbf24"/>
-                <text x="163" y="94" text-anchor="middle" fill="#92400e" font-size="9.5">PE11,13</text>
+                <rect x="0" y="76" width="38" height="28" rx="4" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.2"/>
+                <text x="19" y="94" text-anchor="middle" fill="#78350f" font-size="9.5" font-weight="700">PE11,0</text>
+                <rect x="48" y="76" width="38" height="28" rx="4" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.2"/>
+                <text x="67" y="94" text-anchor="middle" fill="#78350f" font-size="9.5" font-weight="700">PE11,1</text>
+                <rect x="96" y="76" width="38" height="28" rx="4" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.2"/>
+                <text x="115" y="94" text-anchor="middle" fill="#78350f" font-size="9.5" font-weight="700">PE11,2</text>
+                <rect x="144" y="76" width="38" height="28" rx="4" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.2"/>
+                <text x="163" y="94" text-anchor="middle" fill="#78350f" font-size="9.5" font-weight="700">PE11,13</text>
               </g>
             </g>
 
@@ -2141,6 +2279,13 @@
       document.getElementById('sim-step-badge').textContent = `Step ${state.simCycle + 1} of 6`;
       document.getElementById('sim-step-title').textContent = step.title;
       document.getElementById('sim-step-desc').textContent = step.desc;
+
+      document.querySelectorAll('.sim-cycle-pill').forEach((pill) => {
+        const c = parseInt(pill.getAttribute('data-simcycle'), 10);
+        pill.className = c === state.simCycle
+          ? 'sim-cycle-pill px-2 py-0.5 rounded-lg text-xs mono font-semibold bg-indigo-600 text-white shadow-sm'
+          : 'sim-cycle-pill px-2 py-0.5 rounded-lg text-xs mono font-medium text-slate-600 hover:text-slate-900';
+      });
 
       // Update metric bars
       const [v1, v2, v3] = step.metrics;
@@ -2999,50 +3144,125 @@ if (Layer.type == EARLY_CONV && Y > C && R > 1) {
     }
 
     // ============================================================================
-    // 7. EVENT LISTENERS & INITIALIZATION
+    // 7. EVENT LISTENERS, DEEP-LINK ROUTING & INITIALIZATION
     // ============================================================================
+    function switchMainView(targetView, updateHash = true) {
+      const validViews = ['explorer', 'compare', 'transformer', 'maestro'];
+      if (!validViews.includes(targetView)) targetView = 'explorer';
+      state.mainView = targetView;
+
+      document.querySelectorAll('.main-view-btn').forEach((b) => {
+        const active = b.getAttribute('data-mainview') === targetView;
+        b.className = `main-view-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all inline-flex items-center gap-1.5 ${
+          active ? 'bg-indigo-600 text-white shadow' : 'text-slate-600 hover:text-slate-900'
+        }`;
+      });
+
+      document.querySelectorAll('.portal-view-link').forEach((link) => {
+        const active = link.getAttribute('data-jumpview') === targetView;
+        link.className = `portal-view-link px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+          active ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-100'
+        }`;
+      });
+
+      const expSection = document.getElementById('view-explorer');
+      const cmpSection = document.getElementById('view-compare');
+      const tfSection = document.getElementById('view-transformer');
+      const maestroSection = document.getElementById('view-maestro');
+      expSection.classList.add('hidden');
+      cmpSection.classList.add('hidden');
+      tfSection.classList.add('hidden');
+      maestroSection.classList.add('hidden');
+
+      if (targetView === 'explorer') {
+        expSection.classList.remove('hidden');
+        updateExplorerUI();
+      } else if (targetView === 'compare') {
+        cmpSection.classList.remove('hidden');
+        initRadarChart();
+        updateWorkloadMapper();
+      } else if (targetView === 'transformer') {
+        tfSection.classList.remove('hidden');
+        renderTransformerOpCards();
+        initTfBarChart();
+        updateTransformerSimulator();
+      } else if (targetView === 'maestro') {
+        maestroSection.classList.remove('hidden');
+        renderMaestroDirectives();
+        initMaestroCharts();
+        computeMaestroDSE();
+      }
+
+      if (updateHash && window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', `#${targetView}`);
+      }
+    }
+
+    function applyHashRoute() {
+      const rawHash = (window.location.hash || '').replace(/^#/, '').trim().toLowerCase();
+      if (['eyeriss', 'shidiannao', 'nvdla'].includes(rawHash)) {
+        stopSimPlayback();
+        state.currentArch = rawHash;
+        state.currentSubmode = ARCH_DATA[rawHash].submodes[0].id;
+        state.selectedComp = ARCH_DATA[rawHash].defaultComponent;
+        state.simCycle = 0;
+        switchMainView('explorer', false);
+        return;
+      }
+      if (['explorer', 'compare', 'transformer', 'maestro'].includes(rawHash)) {
+        switchMainView(rawHash, false);
+        return;
+      }
+      switchMainView(state.mainView || 'explorer', false);
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
       // Top Main View Switcher
       document.querySelectorAll('.main-view-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
           const targetView = btn.getAttribute('data-mainview');
-          state.mainView = targetView;
+          switchMainView(targetView, true);
+        });
+      });
 
-          document.querySelectorAll('.main-view-btn').forEach((b) => {
-            const active = b.getAttribute('data-mainview') === targetView;
-            b.className = `main-view-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-              active ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-900'
-            }`;
-          });
-
-          const expSection = document.getElementById('view-explorer');
-          const cmpSection = document.getElementById('view-compare');
-          const tfSection = document.getElementById('view-transformer');
-          const maestroSection = document.getElementById('view-maestro');
-          expSection.classList.add('hidden');
-          cmpSection.classList.add('hidden');
-          tfSection.classList.add('hidden');
-          maestroSection.classList.add('hidden');
-
-          if (targetView === 'explorer') {
-            expSection.classList.remove('hidden');
-          } else if (targetView === 'compare') {
-            cmpSection.classList.remove('hidden');
-            initRadarChart();
-            updateWorkloadMapper();
-          } else if (targetView === 'transformer') {
-            tfSection.classList.remove('hidden');
-            renderTransformerOpCards();
-            initTfBarChart();
-            updateTransformerSimulator();
-          } else if (targetView === 'maestro') {
-            maestroSection.classList.remove('hidden');
-            renderMaestroDirectives();
-            initMaestroCharts();
-            computeMaestroDSE();
+      // Portal View Quick Links
+      document.querySelectorAll('.portal-view-link').forEach((link) => {
+        link.addEventListener('click', (e) => {
+          const targetView = link.getAttribute('data-jumpview');
+          if (targetView) {
+            e.preventDefault();
+            switchMainView(targetView, true);
           }
         });
       });
+
+      // Portal Collapse / Expand Toggle
+      const togglePortalBtn = document.getElementById('btn-toggle-portal');
+      const portalBody = document.getElementById('portal-cards-body');
+      if (togglePortalBtn && portalBody) {
+        togglePortalBtn.addEventListener('click', () => {
+          const isHidden = portalBody.classList.toggle('hidden');
+          togglePortalBtn.textContent = isHidden ? '展开导航 ▼' : '收起导航 ▲';
+        });
+      }
+
+      // Share Current View Button
+      const shareViewBtn = document.getElementById('btn-share-view');
+      const shareViewLabel = document.getElementById('share-view-label');
+      if (shareViewBtn && shareViewLabel) {
+        shareViewBtn.addEventListener('click', () => {
+          const url = `${window.location.origin}${window.location.pathname}#${state.mainView}`;
+          const done = () => {
+            shareViewLabel.textContent = '✓ 已复制链接';
+            setTimeout(() => { shareViewLabel.textContent = '分享视图 ↗'; }, 2000);
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(done).catch(done);
+          } else {
+            done();
+          }
+        });
+      }
 
       // Architecture Card Switcher
       document.querySelectorAll('.arch-select-card').forEach((card) => {
@@ -3082,6 +3302,17 @@ if (Layer.type == EARLY_CONV && Y > C && R > 1) {
         toggleSimPlayback();
       });
 
+      document.querySelectorAll('.sim-cycle-pill').forEach((pill) => {
+        pill.addEventListener('click', () => {
+          const c = parseInt(pill.getAttribute('data-simcycle'), 10);
+          if (!Number.isNaN(c) && c >= 0 && c <= 5) {
+            stopSimPlayback();
+            state.simCycle = c;
+            renderSimulatorStep();
+          }
+        });
+      });
+
       // Workload Presets & Sliders
       const presets = {
         alexnet_conv1: { cin: 3, kout: 96, kernel: 11 },
@@ -3117,7 +3348,7 @@ if (Layer.type == EARLY_CONV && Y > C && R > 1) {
         });
       });
 
-      // GitHub Modal Controls
+      // GitHub / Navigation Modal Controls
       const ghModal = document.getElementById('github-modal');
       document.getElementById('btn-open-github-modal').addEventListener('click', () => {
         ghModal.classList.remove('hidden');
@@ -3131,11 +3362,8 @@ if (Layer.type == EARLY_CONV && Y > C && R > 1) {
 
       document.getElementById('btn-copy-commands').addEventListener('click', () => {
         const cmdText = [
-          'git init',
-          'git add index.html README.md .nojekyll',
-          'git commit -m "feat: add interactive Eyeriss, ShiDianNao, and NVDLA architecture visualizer"',
-          'git branch -M main',
-          'git push -u origin main'
+          'node observatory/scripts/serve.mjs',
+          'node observatory/scripts/check-all.mjs'
         ].join('\n');
 
         const showToast = () => {
@@ -3196,7 +3424,7 @@ if (Layer.type == EARLY_CONV && Y > C && R > 1) {
 
       renderTransformerOpCards();
 
-            // MAESTRO View Controls
+      // MAESTRO View Controls
       document.querySelectorAll('.maestro-flow-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
           const mf = btn.getAttribute('data-mflow');
@@ -3229,8 +3457,15 @@ if (Layer.type == EARLY_CONV && Y > C && R > 1) {
 
       renderMaestroDirectives();
 
-            // Initial Render
-      updateExplorerUI();
+      // Initial Route & Render
+      applyHashRoute();
+      window.addEventListener('hashchange', () => {
+        const ghModalEl = document.getElementById('github-modal');
+        if (ghModalEl && !ghModalEl.classList.contains('hidden')) {
+          ghModalEl.classList.add('hidden');
+        }
+        applyHashRoute();
+      });
     });
   </script>
 </body>
