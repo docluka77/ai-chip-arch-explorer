@@ -35,7 +35,7 @@
     ],
     groq: [
       ['core', 'LPU 内部'],
-      ['overview', '快速概览']
+      ['matrix', '矩阵运算']
     ]
   };
 
@@ -59,7 +59,13 @@
     },
     groq: {
       core: 'L0 · LPU 内部功能块 (SRAM / Matrix / Vector / C2C)',
-      overview: '快速概览'
+      matrix: 'L1 · 4×4×4 教学 Tile (非物理 PE 尺寸)'
+    },
+    tpu8i: {
+      matrix: 'L1 · 4×4×4 教学 Tile (非物理 PE 尺寸)'
+    },
+    tpu8t: {
+      matrix: 'L1 · 4×4×4 教学 Tile (非物理 PE 尺寸)'
     }
   };
 
@@ -93,7 +99,7 @@
 
   function renderNav(c, state) {
     const ls = levels(c);
-    if (!ls.some(([id]) => id === state.layer) && state.layer !== 'overview') {
+    if (!ls.some(([id]) => id === state.layer) && (state.layer !== 'overview' || c.id === 'zhenwu')) {
       state.layer = ls[0][0];
     }
     const breadcrumbs = ls.map(([id, label], i) => {
@@ -101,13 +107,19 @@
       return `<button data-layer="${id}" class="layer-pill ${active ? 'active' : ''}" aria-pressed="${active}"><span class="layer-depth">L${i}</span><span class="layer-name">${esc(label)}</span></button>`;
     }).join('<span class="layer-separator" aria-hidden="true">→</span>');
 
-    const overviewBtn = !ls.some(([id]) => id === 'overview')
+    const overviewBtn = c.id !== 'zhenwu' && !ls.some(([id]) => id === 'overview')
       ? `<span class="layer-divider" aria-hidden="true">|</span><button data-layer="overview" class="overview-layer ${state.layer === 'overview' ? 'active' : ''}" aria-pressed="${state.layer === 'overview'}">保留的简化概览</button>`
       : '';
     $('#layer-nav').innerHTML = breadcrumbs + overviewBtn;
   }
 
   function stageNode(c, layer, step) {
+    if (c?.id === 'zhenwu' && layer === 'chip') {
+      return ['memory', 'cache', 'cu00', 'network', 'output'][step] || 'memory';
+    }
+    if (c?.id === 'rx9070' && layer === 'cu') {
+      return ['scheduler', 'register', 'tfu', 'lsu', 'graphics'][step] || 'scheduler';
+    }
     const maps = {
       chip: ['memory', 'cache', 'compute', 'network', 'output'],
       gpc: ['input', 'raster', 'tpc0', 'rop', 'output'],
@@ -253,22 +265,23 @@
       page = 11;
       for (let i = 0; i < 4; i++) {
         const x = 35 + i * 266;
-        add('sub' + i, x, 105, 250, 290, '子分区 ' + (i + 1), '1 Scheduler / 64 KiB RF', '每个子分区包含L0指令缓存、Warp Scheduler、Dispatch、64 KiB寄存器堆、32个统一FP32/INT32单元、1个第5代Tensor Core、4个LD/ST和1个SFU。', 'partition', 'compute', text(x + 17, 183, '32 统一 FP32 / INT32', 17) + text(x + 17, 215, '1 × 第五代 Tensor Core', 15) + text(x + 17, 248, 'LD/ST ×4（加载存储）', 14) + text(x + 17, 281, 'SFU ×1（特殊函数）', 14) + text(x + 17, 356, '进入子分区 ↗', 14, '#5483a5'), {
+        add('sub' + i, x, 105, 250, 285, '子分区 ' + (i + 1), '1 Scheduler / 64 KiB RF', '每个子分区包含L0指令缓存、Warp Scheduler、Dispatch、64 KiB寄存器堆、32个统一FP32/INT32单元、1个第5代Tensor Core、4个LD/ST和1个SFU。', 'partition', 'compute', text(x + 17, 183, '32 统一 FP32 / INT32', 17) + text(x + 17, 215, '1 × 第五代 Tensor Core', 15) + text(x + 17, 248, 'LD/ST ×4（加载存储）', 14) + text(x + 17, 281, 'SFU ×1（特殊函数）', 14) + text(x + 17, 356, '进入子分区 ↗', 14, '#5483a5'), {
           prefill: '每个子分区每周期发射指令全速推进矩阵计算，隐藏数据等待延迟。',
           decode: '由于单 token 访存等待，Warp 经常处于等待内存操作完成的挂起状态。'
         }, 'L4 SM 子分区');
       }
-      add('shared', 35, 422, 650, 70, '128 KB L1 数据缓存 / 共享内存 (Shared Memory)', '四个子分区共享的 SM 级存储资源', 'L1缓存与程序显式声明的共享内存在同一物理存储区统一动态划分。支持低延迟操作数广播与线程块内通信。', null, 'memory', '', {
+      add('shared', 35, 416, 1048, 64, '128 KB L1 数据缓存 / 共享内存 (Shared Memory)', '四个子分区共享的 SM 级存储资源', 'L1缓存与程序显式声明的共享内存在同一物理存储区统一动态划分。支持低延迟操作数广播与线程块内通信。', null, 'memory', '', {
         prefill: 'Shared Memory 用于存放跨 Warp 共享的 Activation Tile，降低重复读取。',
         decode: '保存当前 token 的中间向量和 Softmax 局部归约结果，超低纳秒级时延。'
       });
-      add('graphics', 710, 422, 389, 70, '4 × Tex 单元 + 1 × 第四代 RT Core', '图形采样与光线追踪硬件', '这些单元保留在官方SM架构图中，但纯LLM矩阵运算算子不调用RT Core或纹理单元。', null, 'control', '', {
+      add('graphics', 35, 492, 1048, 64, '4 × Tex 单元 + 1 × 第四代 RT Core', '图形采样与光线追踪硬件 · 纯 LLM 推理旁路', '这些单元保留在官方SM架构图中，但纯LLM矩阵运算算子不调用RT Core或纹理单元。', null, 'control', '', {
         prefill: '保留在官方图中的图形硬件，在纯 LLM 算子中处于旁路闲置状态。',
         decode: 'RT Core 不参与自回归生成，验证了通用 GPU 的异构多用途特征。'
       });
-      line('160,395 160,422', 'shared');
-      line('426,395 426,422', 'shared');
-      line('620,395 620,422', 'shared');
+      line('160,390 160,416', 'shared');
+      line('426,390 426,416', 'shared');
+      line('692,390 692,416', 'shared');
+      line('958,390 958,416', 'shared');
       foot = 'RTX Blackwell（SM120）白皮书未披露数据中心级 SM100 的 TMEM；本站不跨代移植 TMEM，亦不臆测私有队列。';
     } else if (c.id === 'rtx5090' && layer === 'partition') {
       title = '一个 SM 子分区 · 调度、寄存器与执行资源';
@@ -335,6 +348,8 @@
         decode: '保留技术证据缺口。'
       });
       line('225,280 249,280 249,140 270,140', 'cache');
+      line('405,175 405,210', 'cu00');
+      line('696,175 696,210', 'cu10');
       foot = '仅重绘公开的功能层次。原文计数差异已保留；框图位置不代表物理布局。';
     } else if (c.id === 'zhenwu' && layer === 'cu') {
       title = 'M890 CU 内部 · 寄存器、计算单元与异步搬运';
@@ -359,7 +374,8 @@
         ['lsu', 'LSU ×4', '一般访存单元', '每CU拥有4个LSU负责常规内存加载与写回。', null, 'memory']
       ];
       units.forEach(([id, uTitle, sub, body, drill, kind], i) => {
-        add(id, 35 + i * 210, 315, 190, 106, uTitle, sub, body, drill, kind, '', {
+        const x = 35 + i * 210;
+        add(id, x, 315, 190, 106, uTitle, sub, body, drill, kind, drill ? text(x + 17, 402, '进入矩阵运算 ↗', 13, '#5985a7') : '', {
           prefill: id === 'tfu' ? 'TFU 高度饱满运行 GEMM 算子。' : '辅助单元支持张量预处理与后处理。',
           decode: id === 'tfu' ? 'TFU 处理低 Batch 向量矩阵乘法。' : 'LSU 成为关键路径。'
         }, drill ? 'L2 矩阵运算' : null);
@@ -383,7 +399,7 @@
         prefill: '片上 SRAM 供给极高内部带宽。',
         decode: '逐 token 读取权重的延迟由微秒级骤降至纳秒级，自回归生成极快。'
       });
-      add('matrix', 335, 205, 320, 135, 'Matrix 矩阵计算单元', '官方核心功能块', '专门执行点积与矩阵乘加；官方简图未披露详细物理微PE排布。', 'matrix', 'tensor', '', {
+      add('matrix', 335, 205, 320, 135, 'Matrix 矩阵计算单元', '官方核心功能块', '专门执行点积与矩阵乘加；官方简图未披露详细物理微PE排布。', 'matrix', 'tensor', text(352, 318, '进入矩阵运算 ↗', 13, '#5985a7'), {
         prefill: '矩阵单元阵列全速推进。',
         decode: '轻量批次在矩阵流水中连续流动。'
       }, '矩阵运算');
@@ -415,7 +431,7 @@
         prefill: '承担算子中的规范化与激活运算。',
         decode: '处理逐元素轻量数学操作。'
       });
-      add('tfu', 350, 365, 300, 105, '第二代 AI 加速器', 'WMMA 矩阵指令执行单元', '公开的WMMA矩阵指令提供硬件级矩阵乘加加速；指令Tile规格不等于底层物理PE阵列排布。', 'matrix', 'tensor', '', {
+      add('tfu', 350, 365, 300, 105, '第二代 AI 加速器', 'WMMA 矩阵指令执行单元', '公开的WMMA矩阵指令提供硬件级矩阵乘加加速；指令Tile规格不等于底层物理PE阵列排布。', 'matrix', 'tensor', text(367, 452, '进入矩阵运算 ↗', 13, '#5985a7'), {
         prefill: '执行大规模 GEMM 算子矩阵乘加。',
         decode: '运行单 token 向量矩阵乘法。'
       }, '矩阵运算');
@@ -428,16 +444,18 @@
         decode: '保持静默，不占用计算流水。'
       });
       line('305,269 350,269', 'valu');
-      line('650,418 695,418', 'graphics');
+      line('305,418 350,418', 'tfu');
+      line('650,269 695,269', 'lsu');
       foot = '重绘公开的功能分工；指令 Tile 规格与内部物理 PE 阵列严格区分。';
     } else if (layer === 'matrix') {
       title = '矩阵乘累加 · 4×4 教学 Tile';
       subtitle = '数学映射示例 ≠ 物理微观 PE 阵列 · K 步逐步累加演示';
+      const regStepText = matrixK < 4 ? `提取 A[i,${matrixK}] 与 B[${matrixK},j]` : '已完成 k=0..3 全部提取';
       add('input', 35, 130, 220, 345, '输入 A 与权重 B', '4×4 教学操作数矩阵', '固定的小规模 4×4 整数矩阵，便于清晰追踪乘加过程。真实算子中的 Tile 大小（如 16×16、64×64）依芯片指令集与编译器决定。', null, 'memory', littleGrid(65, 243, 4, 4, 27, 9), {
         prefill: 'Prefill 阶段输入 A 代表多个 Prompt Token 的激活向量矩阵，权重 B 为模型层参数。',
         decode: 'Decode 阶段输入 A 退化为 1×D 单向量或极小批次，权重 B 仍为全量参数矩阵。'
       });
-      add('register', 305, 130, 250, 125, '操作数准备 / Tile 配对', '第 K 步操作数提取', '将输入矩阵第 i 行与权重矩阵第 j 列在维度 K 上的操作数提取并送入乘法器。', null, 'memory', text(325, 205, `提取 A[i,${matrixK}] 与 B[${matrixK},j]`, 15, '#5d8daf'), {
+      add('register', 305, 130, 250, 125, '操作数准备 / Tile 配对', matrixK < 4 ? '第 K 步操作数提取' : '已完成 4 步提取', '将输入矩阵第 i 行与权重矩阵第 j 列在维度 K 上的操作数提取并送入乘法器。', null, 'memory', text(325, 205, regStepText, 15, '#5d8daf'), {
         prefill: '高吞吐连续发射并预取后续操作数。',
         decode: '由于输入向量小，权重数据量大，操作数重用率（Data Reuse）接近 1。'
       });
@@ -567,25 +585,20 @@
         $('#figure-dialog-content img').classList.toggle('zoomed');
         return true;
       }
-      if (target.hasAttribute('data-matrix-step')) {
-        matrixK = Math.min(4, matrixK + 1);
+      if (target.hasAttribute('data-matrix-step') || target.hasAttribute('data-matrix-reset')) {
+        matrixK = target.hasAttribute('data-matrix-reset') ? 0 : Math.min(4, matrixK + 1);
         renderMatrix();
+        const regStepText = matrixK < 4 ? `提取 A[i,${matrixK}] 与 B[${matrixK},j]` : '已完成 k=0..3 全部提取';
+        const regSubText = matrixK < 4 ? '第 K 步操作数提取' : '已完成 4 步提取';
+        if (infoMap.accumulator) infoMap.accumulator.tag = `累加进度：${matrixK} / 4`;
+        if (infoMap.register) infoMap.register.tag = regSubText;
         if (state && state.layer === 'matrix') {
           const accNode = $('#architecture [data-node="accumulator"] text:nth-of-type(2)');
           if (accNode) accNode.textContent = `累加进度：${matrixK} / 4`;
+          const regSub = $('#architecture [data-node="register"] text:nth-of-type(2)');
+          if (regSub) regSub.textContent = regSubText;
           const regText = $('#architecture [data-node="register"] text:nth-of-type(3)');
-          if (regText) regText.textContent = `提取 A[i,${matrixK}] 与 B[${matrixK},j]`;
-        }
-        return true;
-      }
-      if (target.hasAttribute('data-matrix-reset')) {
-        matrixK = 0;
-        renderMatrix();
-        if (state && state.layer === 'matrix') {
-          const accNode = $('#architecture [data-node="accumulator"] text:nth-of-type(2)');
-          if (accNode) accNode.textContent = `累加进度：0 / 4`;
-          const regText = $('#architecture [data-node="register"] text:nth-of-type(3)');
-          if (regText) regText.textContent = `提取 A[i,0] 与 B[0,j]`;
+          if (regText) regText.textContent = regStepText;
         }
         return true;
       }

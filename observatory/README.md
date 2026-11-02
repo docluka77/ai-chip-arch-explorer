@@ -16,7 +16,7 @@
 
 在线入口：[芯片架构观察室](https://docluka77.github.io/ai-chip-arch-explorer/observatory/)。直接打开本目录 index.html 也能阅读，不需要安装或构建。官方远程图片与资料链接需要联网。
 
-新增：[07 RDMA与集群互连](https://docluka77.github.io/ai-chip-arch-explorer/observatory/?v=0.9#rdma) · 4张原论文图、6组图解模型，90条阅读文献、八条路线，SRNIC模块，有损/乱序，scale-up/out与开销实验。
+新增：[07 RDMA与集群互连](https://docluka77.github.io/ai-chip-arch-explorer/observatory/?v=0.9.4#rdma) · 4张原论文图、6组图解模型，90条阅读文献、八条路线，SRNIC模块，有损/乱序，scale-up/out与开销实验。
 
 新入口：[算子执行显微镜](https://docluka77.github.io/ai-chip-arch-explorer/observatory/#operator)。克隆仓库后，在本目录运行 `node scripts/serve.mjs` 预览，运行 `node scripts/check-all.mjs` 核对语法、矩阵结果、形状/数据格式和来源契约；不需要安装依赖。
 
