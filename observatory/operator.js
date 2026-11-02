@@ -16,7 +16,7 @@
   const svgText=(x,y,t,size=19,attrs='')=>`<text x="${x}" y="${y}" font-size="${size}" ${attrs}>${esc(t)}</text>`;
   function box(x,y,w,h,id,title,lines=[],tone='blue'){
     const active=S.focus===id, currentNode=current().focus===id;
-    return `<g class="op-node op-${tone} ${active?'selected':''} ${currentNode?'current':''}" data-op-module="${id}" tabindex="0" role="button" aria-label="展开${esc(title)}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10"/>${svgText(x+16,y+30,title,20,'class="op-node-title"')}${lines.map((l,i)=>svgText(x+16,y+57+i*23,l,15)).join('')}${svgText(x+w-19,y+29,'＋',17,'text-anchor="end" class="op-plus"')}</g>`;
+    return `<g class="op-node op-${tone} ${active?'selected':''} ${currentNode?'current':''}" data-op-module="${id}" tabindex="0" role="button" aria-label="展开${esc(title)}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10"/>${svgText(x+15,y+30,title,w<165?16.5:w<195?18:19.5,'class="op-node-title"')}${lines.map((l,i)=>svgText(x+15,y+57+i*23,l,15)).join('')}${svgText(x+w-12,y+28,'＋',15,'text-anchor="end" class="op-plus"')}</g>`;
   }
   const edge=(d,label='',x=0,y=0)=>`<path d="${d}" class="op-edge" marker-end="url(#op-arrow)"/>${label?svgText(x,y,label,14,'class="op-edge-label"'):''}`;
   const defs=()=>`<defs><marker id="op-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#9eb0bf"/></marker></defs>`;

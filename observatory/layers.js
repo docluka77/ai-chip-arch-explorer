@@ -186,11 +186,11 @@
         prefill: '170 SM 与 680 个 Tensor Core 全力进行高吞吐矩阵乘法，算力稼动率达到峰值。',
         decode: '单步计算量小（趋近矩阵-向量乘），SM 运算核心常需等待显存加载权重，算力利用率显著低于 Prefill。'
       }, 'L1 GPC 层级');
-      add('network', 875, 110, 190, 145, 'PCIe 5.0 ×16', '主机接口 · 无数据中心 NVLink', '主机CPU通过PCIe 5.0 ×16接口与显卡交互。消费级RTX 5090未配备数据中心级NVLink或Rubin机架互连。', null, 'network', '', {
+      add('network', 875, 110, 190, 145, 'PCIe 5.0 ×16', '主机接口 · 无 NVLink 互连', '主机CPU通过PCIe 5.0 ×16接口与显卡交互。消费级RTX 5090未配备数据中心级NVLink或Rubin机架互连。', null, 'network', '', {
         prefill: '从主机接收 Prompt 提示词的输入数据与算子调度指令。',
         decode: '每步仅与主机交互极小控制与 token 数据，主要耗时在 GPU 片内与显存访存。'
       });
-      add('output', 875, 300, 190, 160, '工作分发 / 系统资源', 'GigaThread / NVENC / NVDEC', '芯片同时集成GigaThread全局调度、视频编解码（NVENC/NVDEC）与显示控制引擎。本图深入聚焦计算与存储层级，完整系统拓扑可对照上方官方原图。', null, 'control', '', {
+      add('output', 875, 300, 190, 160, '全局调度与系统引擎', 'GigaThread / 编解码引擎', '芯片同时集成GigaThread全局调度、视频编解码（NVENC/NVDEC）与显示控制引擎。本图深入聚焦计算与存储层级，完整系统拓扑可对照上方官方原图。', null, 'control', '', {
         prefill: 'GigaThread 引擎依据网格规模派发大量 CTA / Thread Block 到各个 GPC 的流水线中。',
         decode: '调度器循环激发单步轻量 Kernel，管理线程块快速下发。'
       });
@@ -221,7 +221,7 @@
         prefill: '图形输出管线旁路，LLM 计算的中间激活向量不写入 ROP。',
         decode: '保持静默，不消耗通用显存总线带宽。'
       });
-      add('output', 880, 302, 185, 168, '继续拆解到 TPC / SM', 'TPC (2 SM) → SM (4 子分区)', '两个SM成对组织在一个TPC中；点击任意TPC或SM即可观察调度器、寄存器堆与Tensor Core的微结构。', 'tpc', 'note', '', {
+      add('output', 880, 302, 185, 168, '继续拆解 TPC / SM', 'TPC (2 SM) → 4 子分区', '两个SM成对组织在一个TPC中；点击任意TPC或SM即可观察调度器、寄存器堆与Tensor Core的微结构。', 'tpc', 'note', '', {
         prefill: '深入探究双 SM 如何共享 PolyMorph 与片上缓存互联。',
         decode: '查看 TPC 内部的 SM 级数据独立性。'
       }, 'L2 TPC 层级');
@@ -252,7 +252,7 @@
         prefill: '采样器与纹理管线空闲，AI kernel 主要走 Tensor Core / ALU。',
         decode: '不参与矩阵运算，与计算核心共享片上布线。'
       });
-      add('output', 860, 315, 200, 160, '下一层拆解目标', '调度器 / RF / 统一 ALU / Tensor Core', 'SM并非黑盒；进入下一层分别观察Warp调度、64 KiB寄存器堆、统一ALU与第5代Tensor Core。', 'sm', 'note', '', {
+      add('output', 860, 315, 200, 160, '下一层拆解目标', '调度 / RF / ALU / Tensor Core', 'SM并非黑盒；进入下一层分别观察Warp调度、64 KiB寄存器堆、统一ALU与第5代Tensor Core。', 'sm', 'note', '', {
         prefill: '探究 4 个子分区的调度器与 Tensor Core 如何协作。',
         decode: '查看 256 KB 寄存器堆与 128 KB 共享内存的延迟特性。'
       }, 'L3 SM 内部');
@@ -320,7 +320,7 @@
       title = '真武 M890 · 公开的 CE / CU 与三级缓存组织';
       subtitle = '版本：架构简介 v1.0 · 不套用于 V900 · 10 CE / 39 CU';
       page = 9;
-      add('memory', 35, 115, 190, 355, '全局内存 / 全芯片 LLC', '片外存储与全芯片共享缓存', 'M890公开三级缓存架构：CU本地L1/TSM、CE内部共享L2、以及全芯片所有CE共享的LLC。', null, 'memory', text(53, 211, 'LLC / L2 / TSM', 17), {
+      add('memory', 35, 115, 190, 355, '全局存储与全片 LLC', '片外存储与共享末级缓存', 'M890公开三级缓存架构：CU本地L1/TSM、CE内部共享L2、以及全芯片所有CE共享的LLC。', null, 'memory', text(53, 211, 'LLC / L2 / TSM', 17), {
         prefill: 'LLC 与 HBM 协同供给大量矩阵参数。',
         decode: '自回归阶段频繁查询全局存储中的 KV Cache。'
       });
@@ -385,8 +385,9 @@
         decode: '自回归生成时利用 AIU 异步流式加载当前 token 所需的模型层参数。'
       });
       line('275,158 275,190', 'register');
+      line('807,158 807,190', 'tsm');
       line('340,266 340,315', 'tfu');
-      line('865,461 865,266', 'tsm');
+      line('960,461 960,438 865,438 865,266', 'tsm');
       foot = '依据 M890 官方架构简介与 SAIL 文档的技术重绘。V900 的未公开容量与时序不做臆测。';
     } else if (c.id === 'groq' && layer === 'core') {
       title = 'Groq 3 LPU · 官方原图给出的核心功能模块';
@@ -411,6 +412,9 @@
         prefill: '在多 LPU 间流水化分发张量并行切片。',
         decode: '每一步生成通过确定性 C2C 网络在节点间低延迟传递激活。'
       });
+      line('162,160 162,205', 'sram');
+      line('495,160 495,205', 'matrix');
+      line('882,160 882,205', 'c2c');
       line('290,273 335,273', 'matrix');
       line('290,436 335,436', 'vector');
       line('655,273 700,273', 'c2c');
@@ -423,7 +427,7 @@
         prefill: '发射大量并发计算指令。',
         decode: '协调小批量算子的指令流水。'
       });
-      add('register', 35, 210, 270, 260, '通用寄存器堆与 LDS 本地数据共享', '近核心数据缓存', '寄存器堆与本地数据共享存储（LDS）为计算单元提供高速数据供给。', null, 'memory', '', {
+      add('register', 35, 210, 270, 260, '通用寄存器堆与 LDS 共享', '近核心数据缓存', '寄存器堆与本地数据共享存储（LDS）为计算单元提供高速数据供给。', null, 'memory', '', {
         prefill: '高并发占用 LDS 空间。',
         decode: '为单 token 局部变量提供纳秒级读取。'
       });
@@ -443,6 +447,9 @@
         prefill: '图形单元在 LLM 算子中不工作。',
         decode: '保持静默，不占用计算流水。'
       });
+      line('170,170 170,210', 'register');
+      line('500,170 500,210', 'valu');
+      line('880,170 880,210', 'lsu');
       line('305,269 350,269', 'valu');
       line('305,418 350,418', 'tfu');
       line('650,269 695,269', 'lsu');
@@ -480,12 +487,18 @@
       return false;
     }
 
+    const charUnits = s => [...String(s)].reduce((sum, ch) => sum + (ch.charCodeAt(0) > 127 ? 1 : 0.56), 0);
     const rects = nodes.map(n => {
       const on = n.id === active, selected = n.id === state.node;
       let fill = n.kind === 'memory' ? '#edf4fa' : n.kind === 'control' ? '#eef1f8' : n.kind === 'tensor' ? '#e7eff7' : n.kind === 'note' ? '#f5f3ed' : '#eef4f8';
       if (on) fill = '#dfeef8';
-      const y2 = n.y + 53;
-      return `<g class="node ${on ? 'active-node' : ''} ${selected ? 'selected' : ''}" data-node="${n.id}" ${n.drill ? `data-enter-layer="${n.drill}"` : ''} role="button" tabindex="0" aria-label="${esc(n.title)}${n.drill ? '，进入' + n.drill : '，查看解释'}" aria-pressed="${selected}"><rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="7" fill="${fill}" stroke="${on ? '#7da4c1' : '#afc5d6'}" stroke-width="${on ? '2' : '1'}"/><text x="${n.x + 17}" y="${n.y + 29}" font-size="${n.w < 140 ? 16 : 18}" font-weight="600" fill="#3d617e">${esc(n.title)}</text><text x="${n.x + 17}" y="${y2}" font-size="${n.w < 140 ? 11 : 13}" fill="#88a1b6">${esc(n.sub)}</text>${n.extra}</g>`;
+      const y2 = n.y + 52;
+      const baseTitle = n.w < 140 ? 15.5 : 17.5;
+      const baseSub = n.w < 140 ? 11.5 : 13;
+      const titleSize = Number(Math.max(12.5, Math.min(baseTitle, (n.w - 30) / Math.max(1, charUnits(n.title)))).toFixed(1));
+      const subSize = Number(Math.max(10.5, Math.min(baseSub, (n.w - 30) / Math.max(1, charUnits(n.sub)))).toFixed(1));
+      const noteCue = n.drill && n.kind === 'note' && !n.extra ? text(n.x + n.w - 14, n.y + n.h - 12, '进入 ↗', 12, '#2d6694', 'font-weight="600" text-anchor="end"') : '';
+      return `<g class="node ${on ? 'active-node' : ''} ${selected ? 'selected' : ''}" data-node="${n.id}" ${n.drill ? `data-enter-layer="${n.drill}"` : ''} role="button" tabindex="0" aria-label="${esc(n.title)}${n.drill ? '，进入' + n.drill : '，查看解释'}" aria-pressed="${selected}"><rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="7" fill="${fill}" stroke="${on ? '#7da4c1' : '#afc5d6'}" stroke-width="${on ? '2' : '1'}"/><text x="${n.x + 16}" y="${n.y + 29}" font-size="${titleSize}" font-weight="600" fill="#2b516e">${esc(n.title)}</text><text x="${n.x + 16}" y="${y2}" font-size="${subSize}" fill="#5c788f">${esc(n.sub)}</text>${n.extra}${noteCue}</g>`;
     }).join('');
 
     const phaseTagColor = state.phase === 'decode' ? '#7d5c34' : '#326b3a';
@@ -523,16 +536,19 @@
 
   function recolor(svg) {
     const palette = {
-      '#142420': '#f7f9fb', '#1c3328': '#eef4f8', '#324c36': '#e0edf7', '#d1e3c4': '#416681',
-      '#8ca987': '#8299ad', '#7f9b77': '#91a8ba', '#bce9a5': '#6f9fbe', '#4a6248': '#afc5d6',
-      '#486342': '#ccdce8', '#294531': '#e4eef6', '#5d7851': '#b1c9db', '#bfd8ad': '#6d90ab',
-      '#9bb48c': '#8da6b8', '#9ab78a': '#90a9bb', '#8da67d': '#a0b5c4', '#a4bc96': '#8aa6bb',
-      '#abc29c': '#89a6bc', '#607c56': '#b2cada', '#78966a': '#9db2c2', '#799485': '#95abba',
-      '#9fb58c': '#92aabd', '#6c8b64': '#9caebe', '#4b654a': '#b4cbdc', '#6b8a67': '#a5bfd2',
-      '#a9956e': '#c9aa80', '#637f58': '#b7cbdc', '#9aaf8b': '#9ab1c3', '#b5a67c': '#a28e6d',
-      '#7b8b73': '#90a4b3', '#c4bb9f': '#a99b85', '#a8c895': '#88aac4', '#7e9b71': '#98adbd',
-      '#d6ebc7': '#648ba7', '#88a67a': '#8fa7ba', '#96b385': '#95acbd', '#d8b37d': '#bc9d6f',
-      '#29452f': '#e4eef6', '#517446': '#b1c9db', '#b1cd9f': '#416681'
+      '#142420': '#f7f9fb', '#1c3328': '#eef4f8', '#324c36': '#e0edf7', '#d1e3c4': '#2b516e',
+      '#8ca987': '#59748a', '#7f9b77': '#637e94', '#bce9a5': '#4c82a8', '#4a6248': '#a5bdd0',
+      '#486342': '#c8dae8', '#294531': '#e4eef6', '#5d7851': '#aac4d8', '#bfd8ad': '#3b6482',
+      '#9bb48c': '#58748b', '#9ab78a': '#58748b', '#8da67d': '#668198', '#a4bc96': '#56748c',
+      '#abc29c': '#54738b', '#607c56': '#9cb8ce', '#78966a': '#648197', '#799485': '#617c91',
+      '#9fb58c': '#58748b', '#6c8b64': '#688296', '#4b654a': '#a8c2d6', '#6b8a67': '#94b3c9',
+      '#a9956e': '#b89463', '#637f58': '#a2bcd0', '#9aaf8b': '#5c788f', '#b5a67c': '#846d46',
+      '#7b8b73': '#64798a', '#c4bb9f': '#82735c', '#a8c895': '#4e7ea1', '#7e9b71': '#607b90',
+      '#d6ebc7': '#355f7d', '#88a67a': '#5b778d', '#96b385': '#59768c', '#d8b37d': '#b38b54',
+      '#29452f': '#e4eef6', '#517446': '#aac4d8', '#b1cd9f': '#2b516e', '#cab481': '#7a6338',
+      '#b6aa7d': '#7a6b49', '#a39b80': '#627280', '#8da17d': '#567288', '#a79b7a': '#687682',
+      '#8d805b': '#9e8d6b', '#76976a': '#7aa3c0', '#a99268': '#7d6840', '#c0a575': '#a68958',
+      '#7d7351': '#9c8e6c', '#7e9573': '#8aa6bd', '#a69270': '#846f49', '#6f8b68': '#607c92'
     };
     svg.querySelectorAll('[fill],[stroke]').forEach(e => {
       for (const attr of ['fill', 'stroke']) {

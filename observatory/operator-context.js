@@ -72,7 +72,7 @@
       s+=rect(605,85,130,120,'NIC B',mode.host?'Socket':'RDMA NIC',S.netStep===5?'active':'');
       s+=arrow('M395 145H605');s+=t(500,112,S.net==='ib'?'IB':'Ethernet / IP',15,'text-anchor="middle"');
       if(mode.host){s+=rect(265,255,130,90,'Host RAM','staging');s+=rect(605,255,130,90,'Host RAM','staging');s+=arrow('M225 145H240V300H265')+arrow('M330 255V205')+arrow('M670 205V255')+arrow('M735 300H755V145H775');}
-      else{s+=arrow('M225 145H265')+arrow('M735 145H775');s+=t(245,227,'PCIe / 平台路径',14,'text-anchor="middle"')+t(755,227,'PCIe / 平台路径',14,'text-anchor="middle"');}
+      else{s+=arrow('M225 145H265')+arrow('M735 145H775');s+=t(245,172,'PCIe / 平台路径',13.5,'text-anchor="middle"')+t(755,172,'PCIe / 平台路径',13.5,'text-anchor="middle"');}
       s+=`<path d="M225 300H245V230H330V205M775 300H755V230H670V205" class="op-control-edge"/>`;
     }
     s+=t(25,412,local?'受支持的GPU P2P示例；实际NVLink域可能跨计算节点。':'实线：payload路径；虚线：控制关系。节点框是教学拓扑，不代表所有集群的布线。',15);

@@ -1,7 +1,7 @@
 /* Additional case-study controls introduced in 0.2. */
 .intro-copy p,.view-head p,.chip-takeaway p,.official-guide p,.inspector p,.inspector .insight,.analysis-card p,.case-lead p,.case-step-info p,.case-point-grid p,.engine-mapping p,.plain-comparison .answer,.compare-profile p,.methodology p,.methodology li{color:#61768a}
 .stage-explainer,.layer-footnotes,.layer-selection-note,.lab-small,.notes-sidebar p,.case-official p{color:#6b8093}
-#architecture text,.case-svg-scroll svg text,#roofline text{fill:#5c7489}
+#architecture .node>text:first-of-type{fill:#2b516e;font-weight:600}
 #architecture .node>text:first-of-type{fill:#365c78;font-weight:550}
 #architecture>text:first-of-type{fill:#365c78;font-weight:600}
 .case-svg-scroll svg g>text:first-of-type{fill:#426b89;font-weight:550}
