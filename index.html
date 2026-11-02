@@ -2354,11 +2354,29 @@
     // ============================================================================
     // 6. WORKLOAD MAPPER & RADAR CHART (VIEW 2)
     // ============================================================================
+    const WORKLOAD_PRESETS = {
+      alexnet_conv1: { cin: 3, kout: 96, kernel: 11 },
+      vgg16_conv3: { cin: 256, kout: 256, kernel: 3 },
+      mobilenet_pw: { cin: 64, kout: 128, kernel: 1 }
+    };
+
     function updateWorkloadMapper() {
       const { cin, kout, kernel } = state.workload;
       document.getElementById('val-cin').textContent = String(cin);
       document.getElementById('val-kout').textContent = String(kout);
       document.getElementById('val-kernel').textContent = `${kernel}×${kernel}`;
+      document.getElementById('input-cin').value = String(cin);
+      document.getElementById('input-kout').value = String(kout);
+      document.getElementById('input-kernel').value = String(kernel);
+
+      document.querySelectorAll('.workload-preset-btn').forEach((b) => {
+        const pKey = b.getAttribute('data-preset');
+        const p = WORKLOAD_PRESETS[pKey];
+        const isMatch = Boolean(p && p.cin === cin && p.kout === kout && p.kernel === kernel);
+        b.className = isMatch
+          ? 'workload-preset-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-600 text-white'
+          : 'workload-preset-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200';
+      });
 
       // 1. Eyeriss 12x14 (168 PEs) mapping calculation
       const eyerissRowSets = Math.floor(12 / Math.min(kernel, 12));
@@ -3146,9 +3164,19 @@ if (Layer.type == EARLY_CONV && Y > C && R > 1) {
     // ============================================================================
     // 7. EVENT LISTENERS, DEEP-LINK ROUTING & INITIALIZATION
     // ============================================================================
+    function currentShareHash() {
+      if (state.mainView === 'explorer' && state.currentArch && state.currentArch !== 'eyeriss') {
+        return state.currentArch;
+      }
+      return state.mainView || 'explorer';
+    }
+
     function switchMainView(targetView, updateHash = true) {
       const validViews = ['explorer', 'compare', 'transformer', 'maestro'];
       if (!validViews.includes(targetView)) targetView = 'explorer';
+      if (targetView !== 'explorer') {
+        stopSimPlayback();
+      }
       state.mainView = targetView;
 
       document.querySelectorAll('.main-view-btn').forEach((b) => {
@@ -3194,7 +3222,7 @@ if (Layer.type == EARLY_CONV && Y > C && R > 1) {
       }
 
       if (updateHash && window.history && window.history.replaceState) {
-        window.history.replaceState(null, '', `#${targetView}`);
+        window.history.replaceState(null, '', `#${currentShareHash()}`);
       }
     }
 
@@ -3214,6 +3242,25 @@ if (Layer.type == EARLY_CONV && Y > C && R > 1) {
         return;
       }
       switchMainView(state.mainView || 'explorer', false);
+    }
+
+    function copyTextWithFallback(text, onDone) {
+      const fallbackCopy = () => {
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        } catch {}
+        onDone();
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(onDone).catch(fallbackCopy);
+      } else {
+        fallbackCopy();
+      }
     }
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -3236,13 +3283,33 @@ if (Layer.type == EARLY_CONV && Y > C && R > 1) {
         });
       });
 
-      // Portal Collapse / Expand Toggle
+      // Portal Collapse / Expand Toggle (with localStorage persistence)
       const togglePortalBtn = document.getElementById('btn-toggle-portal');
       const portalBody = document.getElementById('portal-cards-body');
+      const portalStorageKey = 'ai_chip_portal_collapsed';
       if (togglePortalBtn && portalBody) {
+        const setPortalCollapsed = (collapsed) => {
+          portalBody.classList.toggle('hidden', collapsed);
+          togglePortalBtn.textContent = collapsed ? '展开导航 ▼' : '收起导航 ▲';
+          togglePortalBtn.setAttribute('aria-expanded', String(!collapsed));
+        };
+        try {
+          if (window.localStorage && window.localStorage.getItem(portalStorageKey) === '1') {
+            setPortalCollapsed(true);
+          } else {
+            setPortalCollapsed(false);
+          }
+        } catch {
+          setPortalCollapsed(false);
+        }
         togglePortalBtn.addEventListener('click', () => {
-          const isHidden = portalBody.classList.toggle('hidden');
-          togglePortalBtn.textContent = isHidden ? '展开导航 ▼' : '收起导航 ▲';
+          const isHidden = !portalBody.classList.contains('hidden');
+          setPortalCollapsed(isHidden);
+          try {
+            if (window.localStorage) {
+              window.localStorage.setItem(portalStorageKey, isHidden ? '1' : '0');
+            }
+          } catch {}
         });
       }
 
@@ -3251,16 +3318,12 @@ if (Layer.type == EARLY_CONV && Y > C && R > 1) {
       const shareViewLabel = document.getElementById('share-view-label');
       if (shareViewBtn && shareViewLabel) {
         shareViewBtn.addEventListener('click', () => {
-          const url = `${window.location.origin}${window.location.pathname}#${state.mainView}`;
-          const done = () => {
+          const baseUrl = (window.location.href || '').split('#')[0];
+          const url = `${baseUrl}#${currentShareHash()}`;
+          copyTextWithFallback(url, () => {
             shareViewLabel.textContent = '✓ 已复制链接';
             setTimeout(() => { shareViewLabel.textContent = '分享视图 ↗'; }, 2000);
-          };
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(url).then(done).catch(done);
-          } else {
-            done();
-          }
+          });
         });
       }
 
@@ -3275,6 +3338,9 @@ if (Layer.type == EARLY_CONV && Y > C && R > 1) {
             state.selectedComp = ARCH_DATA[newArch].defaultComponent;
             state.simCycle = 0;
             updateExplorerUI();
+            if (window.history && window.history.replaceState) {
+              window.history.replaceState(null, '', `#${currentShareHash()}`);
+            }
           }
         });
       });
@@ -3314,26 +3380,12 @@ if (Layer.type == EARLY_CONV && Y > C && R > 1) {
       });
 
       // Workload Presets & Sliders
-      const presets = {
-        alexnet_conv1: { cin: 3, kout: 96, kernel: 11 },
-        vgg16_conv3: { cin: 256, kout: 256, kernel: 3 },
-        mobilenet_pw: { cin: 64, kout: 128, kernel: 1 }
-      };
-
       document.querySelectorAll('.workload-preset-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
           const pKey = btn.getAttribute('data-preset');
-          const p = presets[pKey];
+          const p = WORKLOAD_PRESETS[pKey];
           if (p) {
             state.workload = { ...p };
-            document.getElementById('input-cin').value = String(p.cin);
-            document.getElementById('input-kout').value = String(p.kout);
-            document.getElementById('input-kernel').value = String(p.kernel);
-            document.querySelectorAll('.workload-preset-btn').forEach((b) => {
-              b.className = b === btn
-                ? 'workload-preset-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-600 text-white'
-                : 'workload-preset-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200';
-            });
             updateWorkloadMapper();
           }
         });
@@ -3359,6 +3411,26 @@ if (Layer.type == EARLY_CONV && Y > C && R > 1) {
       document.getElementById('btn-close-github-modal-bottom').addEventListener('click', () => {
         ghModal.classList.add('hidden');
       });
+      ghModal.addEventListener('click', (e) => {
+        if (e.target === ghModal) {
+          ghModal.classList.add('hidden');
+        }
+      });
+      ghModal.querySelectorAll('a[href^="#"]').forEach((link) => {
+        link.addEventListener('click', (e) => {
+          const targetHash = (link.getAttribute('href') || '').replace(/^#/, '').trim().toLowerCase();
+          ghModal.classList.add('hidden');
+          if (targetHash) {
+            e.preventDefault();
+            switchMainView(targetHash, true);
+          }
+        });
+      });
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !ghModal.classList.contains('hidden')) {
+          ghModal.classList.add('hidden');
+        }
+      });
 
       document.getElementById('btn-copy-commands').addEventListener('click', () => {
         const cmdText = [
@@ -3366,31 +3438,11 @@ if (Layer.type == EARLY_CONV && Y > C && R > 1) {
           'node observatory/scripts/check-all.mjs'
         ].join('\n');
 
-        const showToast = () => {
+        copyTextWithFallback(cmdText, () => {
           const toast = document.getElementById('copy-toast');
           toast.classList.remove('opacity-0');
           setTimeout(() => toast.classList.add('opacity-0'), 2200);
-        };
-
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(cmdText).then(showToast).catch(() => {
-            const ta = document.createElement('textarea');
-            ta.value = cmdText;
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-            showToast();
-          });
-        } else {
-          const ta = document.createElement('textarea');
-          ta.value = cmdText;
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand('copy');
-          document.body.removeChild(ta);
-          showToast();
-        }
+        });
       });
 
       // Transformer View Controls

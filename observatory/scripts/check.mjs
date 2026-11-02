@@ -57,5 +57,17 @@ detail.render(matrixSvg,rtx,{layer:'matrix',stage:0,node:'register',phase:'decod
 assert.ok(matrixSvg.innerHTML.includes('已完成 k=0..3 全部提取'));
 const html=fs.readFileSync(path.join(dist,'index.html'),'utf8');
 for(const match of html.matchAll(/(?:src|href)="([^"#]+\.(?:js|css|svg))"/g))assert.ok(fs.existsSync(path.join(dist,match[1])),'Missing entry asset '+match[1]);
-console.log(`Verified: 10 chips, ${db.sources.length} sources, all chip detail layers & stageNodes, 40 model layers, shared-KV topology, matrix results, and local figure assets.`);
+assert.ok(html.includes('href="../index.html"'),'Observatory must link back to root index.html');
+const rootHtmlPath=path.resolve(root,'../index.html');
+if(fs.existsSync(rootHtmlPath)){
+  const rootHtml=fs.readFileSync(rootHtmlPath,'utf8');
+  const scriptBlocks=[...rootHtml.matchAll(/<script(?![^>]*src=)[^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1]);
+  assert.equal(scriptBlocks.length,2,'Root index.html must contain 2 inline script blocks');
+  for(const block of scriptBlocks)new vm.Script(block);
+  const htmlIds=new Set([...rootHtml.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]));
+  for(const [,refId] of scriptBlocks[1].matchAll(/getElementById\('([^']+)'\)/g))assert.ok(htmlIds.has(refId),'Missing root HTML element #'+refId);
+  for(const target of ['observatory/index.html','observatory/index.html#explore','observatory/index.html#case','observatory/index.html#operator','observatory/index.html#rdma','observatory/index.html#lab','observatory/index.html#compare','observatory/index.html#sources'])assert.ok(rootHtml.includes(target),'Root index.html missing showcase link '+target);
+  assert.ok(!rootHtml.includes('fill="#1e1b4b"')&&!rootHtml.includes('fill="#78350f"><text'),'Root index.html must not have dark-on-dark PE rect fills');
+}
+console.log(`Verified: 10 chips, ${db.sources.length} sources, all chip detail layers & stageNodes, 40 model layers, shared-KV topology, matrix results, local figure assets, and dual-webpage showcase links.`);
 
