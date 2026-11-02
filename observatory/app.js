@@ -42,7 +42,7 @@
     };
     return details[id]||details.memory;
   }
-  function renderInspector() {const c=current(),d=nodeDetails(c,state.node),phaseTag=state.phase==='decode'?'Decode 逐 token 视角':'Prefill 读提示词 视角';$('#inspector').innerHTML=`<span class="eyebrow">INSIDE THE ARCHITECTURE</span><h3>${esc(d.title)}</h3><span class="detail-tag">${esc(d.tag)}</span><p>${esc(d.body)}</p><div class="insight"><span>为什么重要 · ${esc(d.phaseLabel||phaseTag)}</span>${esc(d.insight)}</div><button class="source-link" data-evidence="${c.id}">查看证据与原始资料 ↗</button>${d.drill?`<button class="drill-button" data-layer="${d.drill}">继续进入 ${esc(d.drillText||d.drill)} ↗</button>`:d.operatorLink?`<a class="drill-button" href="#operator">对比 SM100 算子显微镜 ↗</a>`:''}`;}
+  function renderInspector() {const c=current(),d=nodeDetails(c,state.node),phaseTag=state.phase==='decode'?'Decode 逐 token 视角':'Prefill 读提示词 视角';$('#inspector').innerHTML=`<span class="eyebrow">INSIDE THE ARCHITECTURE</span><h3>${esc(d.title)}</h3><span class="detail-tag">${esc(d.tag)}</span><p>${esc(d.body)}</p><div class="insight"><span>为什么重要 · ${esc(d.phaseLabel||phaseTag)}</span>${esc(d.insight)}</div><button class="source-link" data-evidence="${c.id}">查看证据与原始资料 ↗</button>${d.drill?`<button class="drill-button" data-layer="${d.drill}">继续进入 ${esc(d.drillText||d.drill)} ↗</button>`:''}${d.operatorLink?`<a class="drill-button" href="#operator">对比 SM100 算子显微镜 ↗</a>`:''}`;}
   function renderDiagram() {
     $('#layer-footnotes').hidden=true;$('#matrix-lab').hidden=true;
     if(window.OBS_DETAIL.render($('#architecture'),current(),state))return;
@@ -198,7 +198,7 @@
     if(target.dataset.chip){selectChip(target.dataset.chip);return;}
     if(target.dataset.phase){pause();state.phase=target.dataset.phase;renderExplore();updateHash();return;}
     if(target.dataset.stage!==undefined){pause();state.stage=Number(target.dataset.stage);state.node=stageNodes()[state.stage];renderDiagram();renderInspector();renderStages();updateHash();return;}
-    if(target.dataset.node){state.node=state.layer==='overview'&&['control','vector'].includes(target.dataset.node)?(target.dataset.node==='control'?'cache':'compute'):target.dataset.node;pause();renderDiagram();renderInspector();return;}
+    if(target.dataset.node){state.node=state.layer==='overview'&&['control','vector'].includes(target.dataset.node)?(target.dataset.node==='control'?'cache':'compute'):target.dataset.node;const idx=stageNodes().indexOf(state.node);if(idx>=0)state.stage=idx;pause();renderDiagram();renderInspector();renderStages();updateHash();return;}
     if(target.dataset.evidence){showEvidence(target.dataset.evidence);return;}
     if(target.dataset.filter){sourceFilter=target.dataset.filter;$$('[data-filter]').forEach(b=>b.classList.toggle('active',b.dataset.filter===sourceFilter));updateSources();return;}
     if(target.dataset.image){const host=target.closest('.dialog-source').querySelector('.original-image');host.innerHTML=`<img src="${esc(target.dataset.image)}" alt="${esc(target.dataset.imageLabel)}" loading="lazy"><p class="source-caption">来源：Google Cloud。原图版权归发布方；点击下方链接可查看原图。</p>${external(target.dataset.image,'在原站打开原图')}`;host.querySelector('img').addEventListener('error',()=>{host.querySelector('img').remove();toast('原图未能加载，可在发布方网站查看');});return;}

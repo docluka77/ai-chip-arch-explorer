@@ -385,8 +385,8 @@
         decode: '自回归生成时利用 AIU 异步流式加载当前 token 所需的模型层参数。'
       });
       line('275,158 275,190', 'register');
-      line('275,266 275,315', 'tfu');
-      line('810,461 810,266', 'tsm');
+      line('340,266 340,315', 'tfu');
+      line('865,461 865,266', 'tsm');
       foot = '依据 M890 官方架构简介与 SAIL 文档的技术重绘。V900 的未公开容量与时序不做臆测。';
     } else if (c.id === 'groq' && layer === 'core') {
       title = 'Groq 3 LPU · 官方原图给出的核心功能模块';
@@ -494,7 +494,7 @@
     const phaseLabel = state.phase === 'decode' ? 'Decode 逐 token · 显存受限' : 'Prefill 读提示词 · 算力受限';
 
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-    svg.innerHTML = `<title id="svg-title">${esc(title)}</title><desc id="svg-desc">${esc(subtitle)}。${esc(foot)}</desc><defs><marker id="detail-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#9cb9cf"/></marker></defs>${text(35, 37, title, 21, '#486d8a', 'font-weight="600"')}${text(35, 66, subtitle, 13, '#8ca4b7')}<g class="scale-badge"><rect x="760" y="20" width="305" height="26" rx="5" fill="#e7eff7" stroke="#b6cde0"/><text x="912" y="37" font-size="12" font-weight="600" fill="#325a7d" text-anchor="middle">${esc(currentScale)}</text></g><g class="phase-badge"><rect x="540" y="20" width="205" height="26" rx="5" fill="${phaseTagBg}" stroke="${phaseTagBorder}"/><text x="642" y="37" font-size="12" font-weight="600" fill="${phaseTagColor}" text-anchor="middle">${phaseLabel}</text></g>${extras.join('')}${edges.join('')}${rects}${text(35, 588, '点击带“进入”的模块可穿透下钻；其他模块显示两阶段解释与硬件参数。', 13, '#8fa6b9')}`;
+    svg.innerHTML = `<title id="svg-title">${esc(title)}</title><desc id="svg-desc">${esc(subtitle)}。${esc(foot)}</desc><defs><marker id="detail-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#9cb9cf"/></marker></defs>${text(35, 37, title, 21, '#486d8a', 'font-weight="600"')}${text(35, 66, subtitle, 13, '#8ca4b7')}<g class="scale-badge"><rect x="735" y="20" width="340" height="26" rx="5" fill="#e7eff7" stroke="#b6cde0"/><text x="905" y="37" font-size="11.5" font-weight="600" fill="#325a7d" style="fill:#325a7d" text-anchor="middle">${esc(currentScale)}</text></g><g class="phase-badge"><rect x="525" y="20" width="198" height="26" rx="5" fill="${phaseTagBg}" stroke="${phaseTagBorder}"/><text x="624" y="37" font-size="11.5" font-weight="600" fill="${phaseTagColor}" style="fill:${phaseTagColor}" text-anchor="middle">${phaseLabel}</text></g>${extras.join('')}${edges.join('')}${rects}${text(35, 588, '点击带“进入”的模块可穿透下钻；其他模块显示两阶段解释与硬件参数。', 13, '#8fa6b9')}`;
     svg.classList.toggle('running', state.playing);
     svg.setAttribute('role', 'group');
     $('#diagram-label').textContent = 'DETAIL ATLAS / ' + layer.toUpperCase();
