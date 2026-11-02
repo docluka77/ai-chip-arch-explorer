@@ -42,23 +42,23 @@
   const scaleLabels = {
     rtx5090: {
       chip: 'L0 · 1× GB202 模板 (192 SM / 零售 170 SM)',
-      gpc: 'L1 · 1/12 GPU (16 SM / 32 Tensor Core)',
-      tpc: 'L2 · 1/96 GPU (2 SM / 4 Tensor Core)',
+      gpc: 'L1 · 1/12 GPU (16 SM / 64 Tensor Core)',
+      tpc: 'L2 · 1/96 GPU (2 SM / 8 Tensor Core)',
       sm: 'L3 · 1/192 GPU (4 子分区 / 256 KB RF)',
-      partition: 'L4 · 1/768 GPU (1 Warp 调度器 / 64 KiB RF)',
-      matrix: 'L5 · 4×4×4 教学 Tile (乘累加数学演示)'
+      partition: 'L4 · 1/768 GPU (1 Scheduler / 64 KiB RF)',
+      matrix: 'L5 · 4×4×4 教学 Tile (非物理 PE 尺寸)'
     },
     zhenwu: {
       chip: 'L0 · 芯片级 CE / CU 拓扑 (10 CE / 39 CU)',
-      cu: 'L1 · 1/39 CU 内部模块 (VALU/TFU/LSU/TSM)',
-      matrix: 'L2 · 4×4×4 教学 Tile (乘累加数学演示)'
+      cu: 'L1 · 单个 CU 内部 (VALU/TFU/SALU/SFU/LSU/AIU)',
+      matrix: 'L2 · 4×4×4 教学 Tile (非物理 PE 尺寸)'
     },
     rx9070: {
-      cu: 'L0 · RDNA 4 CU 功能分工 (Dual Issue / AI Gen2)',
-      matrix: 'L1 · 4×4×4 教学 Tile (乘累加数学演示)'
+      cu: 'L0 · RDNA 4 CU 功能分工 (向量 / 第二代 AI 加速)',
+      matrix: 'L1 · 4×4×4 教学 Tile (非物理 PE 尺寸)'
     },
     groq: {
-      core: 'L0 · LPU 核心处理模块 (SRAM / Matrix / Vector)',
+      core: 'L0 · LPU 内部功能块 (SRAM / Matrix / Vector / C2C)',
       overview: '快速概览'
     }
   };
@@ -172,15 +172,15 @@
       }
       add('compute', 255, 463, 580, 62, '192 SM 是完整设计；170 SM 是 RTX 5090 零售启用', '点击任意 GPC 继续展开（12 GPC × 16 SM）', '不可将完整GB202的192 SM模板混同于零售RTX 5090的实际启用数量。零售卡启用170 SM、680 Tensor Core与21,760 CUDA核心。', 'gpc', 'note', '', {
         prefill: '170 SM 与 680 个 Tensor Core 全力进行高吞吐矩阵乘法，算力稼动率达到峰值。',
-        decode: '每步计算量小（GEMV），SM 运算核心大部分时间等待显存加载权重，整体算力利用率通常低于 25%。'
+        decode: '单步计算量小（趋近矩阵-向量乘），SM 运算核心常需等待显存加载权重，算力利用率显著低于 Prefill。'
       }, 'L1 GPC 层级');
-      add('network', 875, 110, 190, 145, 'PCIe 5.0 ×16', '主机连接 · ~64 GB/s', '主机CPU通过PCIe 5.0总线与显卡通信。消费级RTX 5090未配备数据中心级NVLink或Rubin互连接口，多卡协同需依赖系统总线。', null, 'network', '', {
-        prefill: '从主机接收 Prompt 提示词的 Token Embedding 向量和算子执行序列指令。',
-        decode: '每步仅回传生成的单个 token id，数据量极小，耗时主要集中在片内计算与显存访存。'
+      add('network', 875, 110, 190, 145, 'PCIe 5.0 ×16', '主机接口 · 无数据中心 NVLink', '主机CPU通过PCIe 5.0 ×16接口与显卡交互。消费级RTX 5090未配备数据中心级NVLink或Rubin机架互连。', null, 'network', '', {
+        prefill: '从主机接收 Prompt 提示词的输入数据与算子调度指令。',
+        decode: '每步仅与主机交互极小控制与 token 数据，主要耗时在 GPU 片内与显存访存。'
       });
-      add('output', 875, 300, 190, 160, '工作分发 / 系统资源', 'GigaThread / NVENC / 显示引擎', '芯片同时集成GigaThread全局调度、视频编解码（NVENC）与显示控制引擎。本图深入聚焦计算与存储层级，完整系统拓扑可对照上方官方原图。', null, 'control', '', {
+      add('output', 875, 300, 190, 160, '工作分发 / 系统资源', 'GigaThread / NVENC / NVDEC', '芯片同时集成GigaThread全局调度、视频编解码（NVENC/NVDEC）与显示控制引擎。本图深入聚焦计算与存储层级，完整系统拓扑可对照上方官方原图。', null, 'control', '', {
         prefill: 'GigaThread 引擎依据网格规模派发大量 CTA / Thread Block 到各个 GPC 的流水线中。',
-        decode: '调度器循环激发单步轻量 GEMV Kernel，管理轻量 Block 快速下发以降低调度开销。'
+        decode: '调度器循环激发单步轻量 Kernel，管理线程块快速下发。'
       });
       line('215,282 235,282 235,145 255,145', 'cache');
       line('545,180 545,206', 'gpc0');
@@ -266,7 +266,10 @@
         prefill: '保留在官方图中的图形硬件，在纯 LLM 算子中处于旁路闲置状态。',
         decode: 'RT Core 不参与自回归生成，验证了通用 GPU 的异构多用途特征。'
       });
-      foot = 'Blackwell 消费级文档未披露 TMEM（Tensor Memory）；本站不强行套用数据中心级 TMEM，亦不臆测私有队列。';
+      line('160,395 160,422', 'shared');
+      line('426,395 426,422', 'shared');
+      line('620,395 620,422', 'shared');
+      foot = 'RTX Blackwell（SM120）白皮书未披露数据中心级 SM100 的 TMEM；本站不跨代移植 TMEM，亦不臆测私有队列。';
     } else if (c.id === 'rtx5090' && layer === 'partition') {
       title = '一个 SM 子分区 · 调度、寄存器与执行资源';
       subtitle = '32 个统一 FP32 / INT32 单元 · 1 个第 5 代 Tensor Core · 64 KiB RF · 占芯片 1/768';
@@ -284,8 +287,8 @@
         decode: '执行单 token 向量的点加、缩放与 Softmax 指数缩放操作。'
       });
       add('tensor', 555, 295, 255, 210, '第五代 Tensor Core', '矩阵乘累加 / FP8 · FP4 · FP16 · BF16', '硬件矩阵计算指令执行矩阵Tile乘加；其底层物理PE维度与布线未公开。点击查看4×4乘加数学演示沙盘。', 'matrix', 'tensor', text(574, 390, 'D = A × B + C', 18, '#5f88a7') + text(574, 471, '进入矩阵运算 ↗', 13, '#5985a7'), {
-        prefill: '核心运算引擎！利用 FP8/FP4 执行大矩阵乘法，提供数百 TFLOPS 的算力峰值。',
-        decode: '处理小 batch 单向量乘大矩阵（GEMV），由于每次加载权重只计算一次，算力利用率远低于峰值。'
+        prefill: '单子分区第五代 Tensor Core 按指令处理矩阵 Tile 乘累加（支持 FP4/FP8/FP16/BF16/TF32），全卡 680 个单元协同提供峰值吞吐。',
+        decode: '处理小 batch 单向量乘大矩阵（GEMV 趋势），每次加载权重复用度低，算力利用率受显存带宽制约。'
       }, 'L5 矩阵运算', true);
       add('lsu', 840, 295, 225, 91, 'LD/ST ×4', '加载 / 存储单元', 'Load/Store单元负责在寄存器与L1/L2之间搬运数据，支持异步数据移动指令。', null, 'memory', '', {
         prefill: '批量加载权重与输入激活，配合异步加载指令搬运到 L1/SMEM。',
